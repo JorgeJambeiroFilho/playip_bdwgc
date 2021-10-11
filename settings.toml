@@ -1,0 +1,11 @@
+[development]
+
+[testing]
+
+[prodtemp]
+
+[production]
+SERVER = '170.238.84.12'
+DATABASE = 'WGC'
+USERNAME = 'wgcplayip'
+PASSWORD = 'teste01*'
