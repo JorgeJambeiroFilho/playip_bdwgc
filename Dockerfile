@@ -19,8 +19,10 @@ RUN apt-get update \
   && ACCEPT_EULA=Y apt-get -y install mssql-tools
 
 RUN echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc \
-  && echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc \
-  && source ~/.bashrc
+  && echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+
+RUN cat ~/.bashrc
+RUN source ~/.bashrc
 
 RUN apt-get -y install unixodbc-dev \
   && apt-get -y install python-pip \
