@@ -22,7 +22,7 @@ RUN echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc \
   && echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
 
 RUN cat ~/.bashrc
-RUN /bin/bash -c source ~/.bashrc
+RUN /bin/bash -c "source ~/.bashrc"
 
 RUN apt-get -y install unixodbc-dev \
   && apt-get -y install python-pip \
