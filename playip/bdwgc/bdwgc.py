@@ -33,14 +33,14 @@ async def getContract(id_contract:str) -> ContractData:
           FROM 
                 ContratoItem as ci, PacoteServico as ps, PacoteServico_Servico as s, Contrato_PacoteServico_Servico as cps
           WHERE 
-                ci.ID_CONTRATO=13000 and 
+                ci.ID_CONTRATO={param_id_contrato} and 
                 ci.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO and 
                 ps.ID_PACOTE_SERVICO=s.ID_PACOTE_SERVICO and 
                 cps.ID_SERVICO=s.ID_SERVICO and
                 cps.ID_CONTRATO=ci.ID_CONTRATO and
                 s.VL_DOWNLOAD > 0
           ORDER BY
-                    DT_ATIVACAO DESC          """)
+                    DT_ATIVACAO DESC          """.format(param_id_contrato=id_contract))
         row = cursor.fetchone()
         if not row:
             res = ContractData(id_contract=id_contract, found=True)
