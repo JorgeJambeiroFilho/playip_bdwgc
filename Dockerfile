@@ -18,6 +18,10 @@ RUN apt-get update \
   && ACCEPT_EULA=Y apt-get -y install msodbcsql17 \
   && ACCEPT_EULA=Y apt-get -y install mssql-tools
 
+RUN wget https://www.openssl.org/source/openssl-1.1.1l.tar.gz -O openssl-1.1.1l.tar.gz && \
+    tar -zxvf openssl-1.1.1l.tar.gz && cd openssl-1.1.1l && ./config && make&& \
+    make install && ldconfig
+
 RUN echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc \
   && echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
 
