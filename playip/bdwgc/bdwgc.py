@@ -13,7 +13,7 @@ gwbd = None
 def getWDB():
     global gwbd
     if not gwbd:
-        gwbd = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+settings.server+';DATABASE='+settings.database+';UID='+settings.username+';PWD='+ settings.password)
+        gwbd = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+settings.SERVER+';DATABASE='+settings.DATABASE+';UID='+settings.USERNAME+';PWD='+ settings.PASSWORD)
     return gwbd
 
 class ContractData(pydantic.BaseModel):
