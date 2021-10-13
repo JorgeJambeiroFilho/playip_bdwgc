@@ -43,11 +43,11 @@ async def getContract(id_contract:str) -> ContractData:
                     DT_ATIVACAO DESC          """.format(param_id_contrato=id_contract))
         row = cursor.fetchone()
         if not row:
-            res = ContractData(id_contract=id_contract, found=True)
+            res = ContractData(id_contract=id_contract, found=False)
         else:
             name = row[0]
             dl = row[1]
             ul =row[2]
-            res = ContractData(id_contract=id_contract,download_speed=dl,upload_speed=ul,pack_name=name)
+            res = ContractData(id_contract=id_contract,download_speed=dl,upload_speed=ul,pack_name=name,found=True)
 
     return res
