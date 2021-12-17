@@ -23,6 +23,7 @@ class ContractData(pydantic.BaseModel):
     is_radio:bool
     found:bool
     pack_name:str
+    user_name:str
 
 @wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
 async def getContract(id_contract:str) -> ContractData:
@@ -31,13 +32,13 @@ async def getContract(id_contract:str) -> ContractData:
     #existe uma tabela chamada Servico que tinha tudo para ser relevante aqui, mas não foi
     with wdb.cursor() as cursor:
         cursor.execute("""
-        
-          SELECT  NM_PACOTE_SERVICO, VL_DOWNLOAD, VL_UPLOAD, s.VL_SERVICO, DT_ATIVACAO, DT_DESATIVACAO, 
+
+          SELECT  NM_PACOTE_SERVICO, VL_DOWNLOAD, VL_UPLOAD, s.VL_SERVICO, cps.DT_ATIVACAO, cps.DT_DESATIVACAO, 
                   dici.ID_TIPO_MEIO_ACESSO, dici.ID_TIPO_TECNOLOGIA, dici.ID_TIPO_PRODUTO, 
-                  tmeio.TX_DESCRICAO_TIPO, ttec.TX_DESCRICAO_TIPO, tprod.TX_DESCRICAO_TIPO
+                  tmeio.TX_DESCRICAO_TIPO, ttec.TX_DESCRICAO_TIPO, tprod.TX_DESCRICAO_TIPO, uname.TX_USERNAME
           FROM 
                   ContratoItem as ci, PacoteServico as ps, PacoteServico_Servico as s, Contrato_PacoteServico_Servico as cps, Servico_DICI as dici,
-                  TiposDiversos as tmeio, TiposDiversos as ttec, TiposDiversos as tprod
+                  TiposDiversos as tmeio, TiposDiversos as ttec, TiposDiversos as tprod, UserName as uname
           WHERE 
                 ci.ID_CONTRATO={param_id_contrato} and 
                 ci.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO and 
@@ -48,10 +49,12 @@ async def getContract(id_contract:str) -> ContractData:
                 tmeio.ID_TIPO_DIVERSOS=dici.ID_TIPO_MEIO_ACESSO and
                 ttec.ID_TIPO_DIVERSOS=dici.ID_TIPO_TECNOLOGIA and
                 tprod.ID_TIPO_DIVERSOS=dici.ID_TIPO_PRODUTO and
+                ci.ID_CONTRATO=uname.ID_CONTRATO and
+                uname.dt_desativacao is null and
                 s.VL_DOWNLOAD > 0
           ORDER BY
-                    DT_ATIVACAO DESC
-                
+                    DT_ATIVACAO DESC  
+                                            
                          """.format(param_id_contrato=id_contract))
         row = cursor.fetchone()
         if not row or row[5]: #se tem data de desativação, não vale
@@ -61,8 +64,9 @@ async def getContract(id_contract:str) -> ContractData:
             dl = row[1]
             ul =row[2]
             is_radio = row[9]=="radio" # a outra opção no wgc é "fibra"
+            userName = row[12]
 
-            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, found=True)
+            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, found=True, userName=userName)
 
     return res
 
