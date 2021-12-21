@@ -24,6 +24,11 @@ class ContractData(pydantic.BaseModel):
     found:bool
     pack_name:str
     user_name:str
+    onu_key:str
+
+    def __init__(self, *args, **kargs):
+        super().__init__(*args, **kargs)
+        self.onu_key = self.user_name
 
 @wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
 async def getContract(id_contract:str) -> ContractData:
