@@ -21,10 +21,12 @@ class ContractData(pydantic.BaseModel):
     download_speed: int
     upload_speed:int
     is_radio:bool
+    is_ftth:bool
     found:bool
     pack_name:str
     user_name:str
-    onu_key:str
+    home_access_key:str
+    home_access_type: str
 
     def __init__(self, *args, **kargs):
         super().__init__(*args, **kargs)
@@ -69,9 +71,13 @@ async def getContract(id_contract:str) -> ContractData:
             dl = row[1]
             ul =row[2]
             is_radio = row[9]=="radio" # a outra opção no wgc é "fibra"
+            is_ftth = "ftth" in str(row[10]).lower()
             userName = row[12]
 
-            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, found=True, userName=userName)
+            home_access_type = "smartolt" if is_ftth else "aircontrol" if is_radio else "none"
+
+
+            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, is_ftth=is_ftth, found=True, userName=userName, home_access_key=userName, home_access_type=home_access_type)
 
     return res
 
