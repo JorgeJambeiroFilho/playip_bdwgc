@@ -77,7 +77,7 @@ async def getContract(id_contract:str) -> ContractData:
             home_access_type = "smartolt" if is_ftth else "aircontrol" if is_radio else "none"
 
 
-            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, is_ftth=is_ftth, found=True, userName=userName, home_access_key=userName, home_access_type=home_access_type)
+            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, is_ftth=is_ftth, found=True, user_name=userName, home_access_key=userName, home_access_type=home_access_type)
 
     return res
 
