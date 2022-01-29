@@ -18,15 +18,15 @@ def getWDB():
 
 class ContractData(pydantic.BaseModel):
     id_contract: str
-    download_speed: int
-    upload_speed:int
-    is_radio:bool
-    is_ftth:bool
-    found:bool
-    pack_name:str
-    user_name:str
-    home_access_key:str
-    home_access_type: str
+    found: bool = False
+    download_speed: Optional[int] = None
+    upload_speed: Optional[int] = None
+    is_radio: Optional[bool] = None
+    is_ftth: Optional[bool] = None
+    pack_name:Optional[str] = None
+    user_name:Optional[str] = None
+    home_access_key:Optional[str] = None
+    home_access_type:Optional[str] = None
 
     def __init__(self, *args, **kargs):
         super().__init__(*args, **kargs)
