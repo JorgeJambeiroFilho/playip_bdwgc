@@ -1,3 +1,6 @@
+
+from typing import Optional
+from typing import List
 from dynaconf import settings
 from fastapi import APIRouter
 import pydantic
