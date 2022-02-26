@@ -105,7 +105,7 @@ async def getClientFromCPFCNPJ(cpfcnpj:str) -> Client:
 @wgcrouter.get("/getcontracts/{id_client}", response_model=List[ContractData])
 async def getContracts(id_client: str) -> List[ContractData]:
     wdb = getWDB()
-    contract_list: List[str] = 0
+    contract_list: List[str] = []
 
     with wdb.cursor() as cursor:
         cursor.execute("""
