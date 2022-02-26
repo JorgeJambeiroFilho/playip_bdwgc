@@ -125,13 +125,13 @@ async def getContracts(id_client: str) -> List[ContractData]:
 
     contracts: List[ContractData] = []
     for c in contract_list:
-        contract: ContractData = getContract(c)
+        contract: ContractData = await getContract(c)
         contracts.append(contract)
     return contracts
 
 @wgcrouter.get("/getcontractsfromcpfcnpj/{cpfcnpj}", response_model=List[ContractData])
-async def getContracts(cpfcnpj: str) -> List[ContractData]:
-    client: Client = getClientFromCPFCNPJ(cpfcnpj)
+async def getContractsFromCPFCNPJ(cpfcnpj: str) -> List[ContractData]:
+    client: Client = await getClientFromCPFCNPJ(cpfcnpj)
     if client:
         contracts: List[ContractData] = getContracts(client.id_client)
     else:
