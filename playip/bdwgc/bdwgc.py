@@ -43,6 +43,101 @@ class ContractData(pydantic.BaseModel):
     def __init__(self, *args, **kargs):
         super().__init__(*args, **kargs)
 
+class Client(pydantic.BaseModel):
+    found: bool = False
+    id_client: Optional[str] = None
+    name: Optional[str] = None
+    alt_name: Optional[str] = None
+    cpfcnpj: Optional[str] = None
+
+@wgcrouter.get("/getclientfromcpfcnpj/{cpfcnpj}", response_model=Client)
+async def getClientFromCPFCNPJ(cpfcnpj:str) -> Client:
+    wdb = getWDB()
+
+    if len(cpfcnpj) == 11:
+        with wdb.cursor() as cursor:
+            cursor.execute("""
+                SELECT  
+                        Cliente.ID_CLIENTE, Cliente.ID_PESSOA, Pessoa.NM_PESSOA, PessoaFisica.TX_CPF
+                FROM 
+                        Cliente 
+                        INNER JOIN Pessoa on (Cliente.ID_PESSOA=Pessoa.ID_PESSOA)
+                        INNER JOIN PessoaFisica on (Cliente.ID_PESSOA=PessoaFisica.ID_PESSOA)
+                        
+                WHERE 
+                        PessoaFisica.TX_CPF = {param_cpf}                  
+            """.format(param_cpf=cpfcnpj))
+            row = cursor.fetchone()
+            if row:
+                id_client: str = row[0]
+                name: str = row[2]
+                cpfcnpj: str = cpfcnpj
+                client: Client = Client(id_client=id_client, name=name, cpfcnpj=cpfcnpj, found=True)
+                return client
+            else:
+                client: Client = Client()
+                return client
+    else:
+        with wdb.cursor() as cursor:
+            cursor.execute("""
+                SELECT  
+                        Cliente.ID_CLIENTE, Cliente.ID_PESSOA, Pessoa.NM_PESSOA, PessoaJuridica.NM_FANTASIA, PessoaJuridica.TX_CNPJ
+                FROM 
+                        Cliente 
+                        INNER JOIN Pessoa on (Cliente.ID_PESSOA=Pessoa.ID_PESSOA)
+                        INNER JOIN PessoaJuridica on (Cliente.ID_PESSOA=PessoaJuridica.ID_PESSOA)
+                        
+                WHERE 
+                        PessoaJuridica.TX_CNPJ = {param_cnpj}                  
+            """.format(param_cnpj=cpfcnpj))
+            row = cursor.fetchone()
+            if row:
+                id_client: str = row[0]
+                name: str = row[2]
+                alt_name: str = row[3]
+                cpfcnpj: str = cpfcnpj
+                client: Client = Client(id_client=id_client, name=name, alt_name=alt_name, cpfcnpj=cpfcnpj, found=True)
+                return client
+            else:
+                client: Client = Client()
+                return client
+
+@wgcrouter.get("/getcontracts/{id_client}", response_model=List[ContractData])
+async def getContracts(id_client: str) -> List[ContractData]:
+    wdb = getWDB()
+    contract_list: List[str] = 0
+
+    with wdb.cursor() as cursor:
+        cursor.execute("""
+            SELECT  
+                    Cliente.ID_CLIENTE, Contrato.ID_CONTRATO
+            FROM 
+                    Cliente 
+                    INNER JOIN Contrato on (Contrato.ID_CLIENTE=Cliente.ID_CLIENTE)
+                    
+            WHERE 
+                    Cliente.ID_CLIENTE = {param_id_cliente}
+                         """.format(param_id_cliente=id_client))
+        row = cursor.fetchone()
+        while row:
+            contract_list.append(row[1])
+            row = cursor.fetchone()
+
+    contracts: List[ContractData] = []
+    for c in contract_list:
+        contract: ContractData = getContract(c)
+        contracts.append(contract)
+    return contracts
+
+@wgcrouter.get("/getcontractsfromcpfcnpj/{cpfcnpj}", response_model=List[ContractData])
+async def getContracts(cpfcnpj: str) -> List[ContractData]:
+    client: Client = getClientFromCPFCNPJ(cpfcnpj)
+    if client:
+        contracts: List[ContractData] = getContracts(client.id_client)
+    else:
+        return []
+
+
 @wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
 async def getContract(id_contract:str) -> ContractData:
     wdb = getWDB()
