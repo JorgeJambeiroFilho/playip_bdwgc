@@ -19,6 +19,14 @@ def getWDB():
         gwbd = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+settings.SERVER+';DATABASE='+settings.DATABASE+';UID='+settings.USERNAME+';PWD='+ settings.PASSWORD)
     return gwbd
 
+class Endereco(pydantic.BaseModel):
+    logradouro: str
+    numero: str
+    complemento: str
+    cep: str
+    condominio: Optional[str]
+    cidade: str
+
 class ContractData(pydantic.BaseModel):
     id_contract: str
     found: bool = False
@@ -30,6 +38,7 @@ class ContractData(pydantic.BaseModel):
     user_name:Optional[str] = None
     home_access_key:Optional[str] = None
     home_access_type:Optional[str] = None
+    endereco: Optional[Endereco] = None
 
     def __init__(self, *args, **kargs):
         super().__init__(*args, **kargs)
@@ -80,6 +89,31 @@ async def getContract(id_contract:str) -> ContractData:
 
 
             res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, is_ftth=is_ftth, found=True, user_name=userName, home_access_key=userName, home_access_type=home_access_type)
+
+    with wdb.cursor() as cursor:
+        cursor.execute("""
+        SELECT  
+                Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, Endereco.TX_CEP as cep, Condominio.TX_NOME_LOCALIDADE as condominio, Cidade.TX_NOME_LOCALIDADE as cidade        
+        FROM 
+                Contrato as Contrato         
+                INNER JOIN Endereco as Endereco on (Endereco.ID_ENDERECO=Contrato.ID_ENDERECO_INSTALACAO)
+                LEFT JOIN LOG_LOCALIDADE as Cidade on (Endereco.ID_CIDADE=Cidade.ID_LOCALIDADE)
+                LEFT JOIN LOG_LOCALIDADE as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_LOCALIDADE)
+    
+        WHERE 
+                ID_CONTRATO = 13000
+    
+                """)
+        row = cursor.fetchone()
+        if row:
+            logradouro: str = row[0]
+            numero: str = row[1]
+            complemento: str = row[2]
+            cep: str = row[3]
+            condominio: Optional[str] = row[4]
+            cidade: Optional[str] = row[5]
+            endereco: Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade)
+            res.endereco = endereco
 
     return res
 
