@@ -134,6 +134,7 @@ async def getContractsFromCPFCNPJ(cpfcnpj: str) -> List[ContractData]:
     client: Client = await getClientFromCPFCNPJ(cpfcnpj)
     if client:
         contracts: List[ContractData] = getContracts(client.id_client)
+        return contracts
     else:
         return []
 
