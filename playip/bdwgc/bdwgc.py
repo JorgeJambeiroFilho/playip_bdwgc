@@ -112,7 +112,7 @@ async def getContract(id_contract:str) -> ContractData:
             cep: str = row[3]
             condominio: Optional[str] = row[4]
             cidade: Optional[str] = row[5]
-            endereco: Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade)
+            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade)
             res.endereco = endereco
 
     return res
