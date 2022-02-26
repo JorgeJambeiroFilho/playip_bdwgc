@@ -65,7 +65,7 @@ async def getClientFromCPFCNPJ(cpfcnpj:str) -> Client:
                         INNER JOIN PessoaFisica on (Cliente.ID_PESSOA=PessoaFisica.ID_PESSOA)
                         
                 WHERE 
-                        PessoaFisica.TX_CPF = {param_cpf}                  
+                        PessoaFisica.TX_CPF = '{param_cpf}'                  
             """.format(param_cpf=cpfcnpj))
             row = cursor.fetchone()
             if row:
@@ -88,7 +88,7 @@ async def getClientFromCPFCNPJ(cpfcnpj:str) -> Client:
                         INNER JOIN PessoaJuridica on (Cliente.ID_PESSOA=PessoaJuridica.ID_PESSOA)
                         
                 WHERE 
-                        PessoaJuridica.TX_CNPJ = {param_cnpj}                  
+                        PessoaJuridica.TX_CNPJ = '{param_cnpj}'                  
             """.format(param_cnpj=cpfcnpj))
             row = cursor.fetchone()
             if row:
