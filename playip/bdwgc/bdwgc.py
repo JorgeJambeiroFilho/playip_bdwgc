@@ -7,6 +7,9 @@ import pydantic
 import fastapi
 import pyodbc
 
+from playipappcommons.infra.endereco import Endereco
+from playipappcommons.ispbd.ispbddata import Client, ContractData
+
 print("FASTAPI version ",fastapi.__version__)
 
 wgcrouter = APIRouter(prefix="/playipispbd/basic")
@@ -19,36 +22,7 @@ def getWDB():
         gwbd = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+settings.SERVER+';DATABASE='+settings.DATABASE+';UID='+settings.USERNAME+';PWD='+ settings.PASSWORD)
     return gwbd
 
-class Endereco(pydantic.BaseModel):
-    logradouro: str
-    numero: str
-    complemento: str
-    cep: str
-    condominio: Optional[str]
-    cidade: str
 
-class ContractData(pydantic.BaseModel):
-    id_contract: str
-    found: bool = False
-    download_speed: Optional[int] = None
-    upload_speed: Optional[int] = None
-    is_radio: Optional[bool] = None
-    is_ftth: Optional[bool] = None
-    pack_name:Optional[str] = None
-    user_name:Optional[str] = None
-    home_access_key:Optional[str] = None
-    home_access_type:Optional[str] = None
-    endereco: Optional[Endereco] = None
-
-    def __init__(self, *args, **kargs):
-        super().__init__(*args, **kargs)
-
-class Client(pydantic.BaseModel):
-    found: bool = False
-    id_client: Optional[str] = None
-    name: Optional[str] = None
-    alt_name: Optional[str] = None
-    cpfcnpj: Optional[str] = None
 
 @wgcrouter.get("/getclientfromcpfcnpj/{cpfcnpj}", response_model=Client)
 async def getClientFromCPFCNPJ(cpfcnpj:str) -> Client:
@@ -189,12 +163,12 @@ async def getContract(id_contract:str) -> ContractData:
     with wdb.cursor() as cursor:
         cursor.execute("""
         SELECT  
-                Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, Endereco.TX_CEP as cep, Condominio.TX_NOME_LOCALIDADE as condominio, Cidade.TX_NOME_LOCALIDADE as cidade        
+                Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, Endereco.TX_CEP as cep, Condominio.TX_NOME_LOCALIDADE as condominio, Cidade.TX_NOME_LOCALIDADE as cidade, Endereco.TX_BAIRRO        
         FROM 
                 Contrato as Contrato         
                 INNER JOIN Endereco as Endereco on (Endereco.ID_ENDERECO=Contrato.ID_ENDERECO_INSTALACAO)
                 LEFT JOIN LOG_LOCALIDADE as Cidade on (Endereco.ID_CIDADE=Cidade.ID_LOCALIDADE)
-                LEFT JOIN LOG_LOCALIDADE as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_LOCALIDADE)
+                LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
     
         WHERE 
                 ID_CONTRATO = 13000
@@ -208,7 +182,8 @@ async def getContract(id_contract:str) -> ContractData:
             cep: str = row[3]
             condominio: Optional[str] = row[4]
             cidade: Optional[str] = row[5]
-            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade)
+            bairro: Optional[str] = row[6]
+            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade, bairro=bairro)
             res.endereco = endereco
 
     return res
