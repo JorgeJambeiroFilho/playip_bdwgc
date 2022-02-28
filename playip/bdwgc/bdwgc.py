@@ -163,13 +163,13 @@ async def getContract(id_contract:str) -> ContractData:
     with wdb.cursor() as cursor:
         cursor.execute("""
         SELECT  
-                Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, Endereco.TX_CEP as cep, Condominio.TX_NOME_LOCALIDADE as condominio, Cidade.TX_NOME_LOCALIDADE as cidade, Endereco.TX_BAIRRO        
+                Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, Endereco.TX_CEP as cep, Condominio.TX_NOME_LOCALIDADE as condominio, Cidade.TX_NOME_LOCALIDADE as cidade, Endereco.TX_BAIRRO, UF.UF_ID        
         FROM 
                 Contrato as Contrato         
                 INNER JOIN Endereco as Endereco on (Endereco.ID_ENDERECO=Contrato.ID_ENDERECO_INSTALACAO)
                 LEFT JOIN LOG_LOCALIDADE as Cidade on (Endereco.ID_CIDADE=Cidade.ID_LOCALIDADE)
                 LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
-    
+                LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
         WHERE 
                 ID_CONTRATO = 13000
     
@@ -183,7 +183,8 @@ async def getContract(id_contract:str) -> ContractData:
             condominio: Optional[str] = row[4]
             cidade: Optional[str] = row[5]
             bairro: Optional[str] = row[6]
-            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade, bairro=bairro)
+            uf: Optional[str] = row[7]
+            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade, bairro=bairro, uf=uf)
             res.endereco = endereco
 
     return res
