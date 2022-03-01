@@ -1,12 +1,13 @@
-import math
-from typing import List, Optional
+from typing import Optional
 
-import pydantic
+from fastapi import APIRouter
 
-from playip.bdwgc.bdwgc import wgcrouter, getWDB
+from playip.bdwgc.bdwgc import getWDB
 from playipappcommons.infra.endereco import Endereco
 from playipappcommons.infra.infraimportmethods import ImportAddressResult, importAddress
-from playipchatmongo import getBotMongoDB
+from playipappcommons.playipchatmongo import getBotMongoDB
+
+importrouter = APIRouter(prefix="/playipispbd/import")
 
 def cf(s):
     if s is None:
@@ -15,7 +16,7 @@ def cf(s):
     return r
 
 
-@wgcrouter.get("/importaddresses/{import_key}/{cidade_alvo}", response_model=ImportAddressResult)
+@importrouter.get("/importaddresses/{import_key}/{cidade_alvo}", response_model=ImportAddressResult)
 async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressResult:
     mdb = getBotMongoDB()
     wdb = getWDB()

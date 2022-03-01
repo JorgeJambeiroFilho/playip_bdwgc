@@ -15,6 +15,7 @@ from playip.bdwgc.bdwgc import wgcrouter
 app = FastAPI()
 
 app.include_router(wgcrouter)
+app.include_router(importrouter)
 
 app.add_middleware(
     CORSMiddleware,

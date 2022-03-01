@@ -3,3 +3,4 @@ uvicorn
 dynaconf
 pyodbc
 numpy
+motor
