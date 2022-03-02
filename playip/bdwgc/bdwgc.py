@@ -171,9 +171,9 @@ async def getContract(id_contract:str) -> ContractData:
                 LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
                 LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
         WHERE 
-                ID_CONTRATO = 13000
+                ID_CONTRATO = {param_id_contrato}
     
-                """)
+                """.format(param_id_contrato=id_contract))
         row = cursor.fetchone()
         if row:
             logradouro: str = row[0]

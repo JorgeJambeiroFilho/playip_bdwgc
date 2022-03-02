@@ -16,6 +16,9 @@ def cf(s):
     return r
 
 
+#curl -X 'GET' 'http://app.playip.com.br/playipispbd/import/importaddresses/wgc/Cotia' -H 'accept: application/json' -H 'access-token: djd62o$w*N<H$k8'
+
+
 @importrouter.get("/importaddresses/{import_key}/{cidade_alvo}", response_model=ImportAddressResult)
 async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressResult:
     mdb = getBotMongoDB()
@@ -37,7 +40,7 @@ async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressRes
                     Endereco.ID_ENDERECO > {param_last_id_endereco_imported}
             ORDER BY 
                     UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO
-                         """.format(param_last_id_endereco_imported=last_id_endereco_imported))
+                         """)
 
         row = cursor.fetchone()
         while row:
