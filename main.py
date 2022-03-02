@@ -11,6 +11,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from playip.bdwgc.bdwgc import wgcrouter
+from playip.bdwgc.import_addr import importrouter
 
 app = FastAPI()
 
