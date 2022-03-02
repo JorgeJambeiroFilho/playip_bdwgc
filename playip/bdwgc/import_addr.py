@@ -36,8 +36,6 @@ async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressRes
                     LEFT JOIN LOG_LOCALIDADE as Cidade on (Endereco.ID_CIDADE=Cidade.ID_LOCALIDADE)
                     LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
                     LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
-            WHERE 
-                    Endereco.ID_ENDERECO > {param_last_id_endereco_imported}
             ORDER BY 
                     UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO
                          """)
