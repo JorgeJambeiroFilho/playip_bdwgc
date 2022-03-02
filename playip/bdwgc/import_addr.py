@@ -50,7 +50,7 @@ async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressRes
             condominio: Optional[str] = cf(row[4])
             cidade: Optional[str] = cf(row[7])
             uf: Optional[str] = cf(row[8])
-            endereco: Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf)
+            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf)
             if cidade is not None and cidade.lower() == cidade_alvo.lower():
                 await importAddress(mdb, res, import_key, endereco)
             row = cursor.fetchone()
