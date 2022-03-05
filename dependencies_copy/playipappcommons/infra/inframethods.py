@@ -15,7 +15,7 @@ async def getChildren(mdb, pid:ObjectId) -> List[InfraElement]:
     #    cursor = mdb.infra.find({"parentId": {"$exists": False}})
 
     res = []
-    for child in await cursor.to_list(50):
+    for child in await cursor.to_list(500):
         res.append(InfraElement(**child))
 
     return res
@@ -178,19 +178,20 @@ async def setInfraElementFailState(id:str, inFail:bool):
     return { "error":"ok" }
 
 
-
-async def createInfraElement(parentid: str, name = "NoName"):
+async def createInfraElement(parentid: str, addressparentid:str = None, name = "NoName"):
     mdb = getBotMongoDB()
-
+    if addressparentid is None:
+        addressparentid = parentid
     parent_id = ObjectId(parentid)
-    infraElement = InfraElement(parentId=parent_id, inFail=False, numDescendantsInFail=0, name=name)
+    parent_address_id = ObjectId(addressparentid)
+
+    infraElement = InfraElement(parentId=parent_id, parentAddressId=parent_address_id, inFail=False, numDescendantsInFail=0, name=name)
     elemDict = infraElement.dict(by_alias=True)
     res = await mdb.infra.insert_one(elemDict)
     _id = res.inserted_id
     infraElement.id = _id
     #return {"error":"ok", "_id":str(_id), "parentId": parentId}
     return infraElement
-
 
 async def moveTransactionCallback(session, elemId, toParentId):
     s = session

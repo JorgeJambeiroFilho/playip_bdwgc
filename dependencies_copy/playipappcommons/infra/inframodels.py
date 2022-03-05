@@ -83,14 +83,21 @@ class AddressFilter(pydantic.BaseModel):
 
 class InfraElement(pydantic.BaseModel):
     id: Optional[FAMongoId] = Field(alias='_id')
-    parentId: Optional[FAMongoId]
+    parentId: Optional[FAMongoId] # pai em termos de estrutura
     name: str
     inFail: bool = False
     numDescendantsInFail: int = 0
     filters: List[AddressFilter] = []
     message:str = ""
-    importKey: Optional[str] = None
-    importFullNames: List[str] = [] #um exemplo de um nome completo seria "SP/Itapevi/Jardim Santa Rita"
+
+    parentAddressId: Optional[FAMongoId]  # pai em termos de endereco.
+    addressLevel: Optional[int] = None # determina o campo de endereço responsavel pela passagem do pai para o presente nó. Veja Endereco.getFieldNameByLevel()
+    addressLevelValues: List[str] = []
+
+    # importKey: Optional[str] = None
+    addressFullNames: List[str] = [] #um exemplo de um nome completo seria "SP/Itapevi/Jardim Santa Rita"
+    importExecUID: Optional[str] = None
+
 
     def checkFilters(self, addressQuery: AddressQuery):
         for filt in self.filters:

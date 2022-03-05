@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter
@@ -24,6 +25,7 @@ async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressRes
     mdb = getBotMongoDB()
     wdb = getWDB()
     res: ImportAddressResult = ImportAddressResult()
+    importExecUID: str = str(uuid.uuid1())
 
     with wdb.cursor() as cursor:
         cursor.execute("""
@@ -51,8 +53,7 @@ async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressRes
             cidade: Optional[str] = cf(row[7])
             uf: Optional[str] = cf(row[8])
             endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf)
-            if cidade is not None and cidade.lower() == cidade_alvo.lower():
-                await importAddress(mdb, res, import_key, endereco)
+            await importAddress(mdb, res, importExecUID, endereco)
             row = cursor.fetchone()
 
     print(res)
