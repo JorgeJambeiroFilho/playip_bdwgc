@@ -97,7 +97,7 @@ class InfraElement(pydantic.BaseModel):
     # importKey: Optional[str] = None
     addressFullNames: List[str] = [] #um exemplo de um nome completo seria "SP/Itapevi/Jardim Santa Rita"
     importExecUID: Optional[str] = None
-
+    manuallyMoved: bool = False
 
     def checkFilters(self, addressQuery: AddressQuery):
         for filt in self.filters:

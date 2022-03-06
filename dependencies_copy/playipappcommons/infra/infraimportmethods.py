@@ -11,21 +11,27 @@ from playipappcommons.util.levenshtein import levenshteinDistanceDP
 
 class ImportAddressResult(pydantic.BaseModel):
     fail: bool = False
+    complete: bool = False
     message: str = "ok"
     num_bairros: int = 0
     num_cidades: int = 0
     num_condominios: int = 0
     num_logradouros: int = 0
+    num_numeros: int = 0
+    num_complementos: int = 0
     num_ufs: int = 0
 
     num_alt_bairros: int = 0
     num_alt_cidades: int = 0
     num_alt_condominios: int = 0
     num_alt_logradouros: int = 0
+    num_alt_numeros: int = 0
+    num_alt_complementos: int = 0
     num_alt_ufs: int = 0
 
     last_id_endereco: int = 0
 
+    num_processed: int = 0
 
 
 def calc_pmatch(nome, n):
@@ -50,14 +56,21 @@ def calc_pmatch(nome, n):
 #     else:
 #         return -1
 
-def findApprox(nome:str, subs: List[InfraElement]):
+def findApprox(nome:str, subs: List[InfraElement], nivel: int):
 
+    fieldName = getFieldNameByLevel(nivel)
+    useApprox = fieldName == "logradouro"
+    lnome = nome.lower()
     best:InfraElement = None
     best_pmatch = 0
     for sub in subs:
         for fn in sub.addressLevelValues:
             n = fn.split("/")[-1]
-            pmatch = calc_pmatch(nome.lower(), n.lower())
+            if useApprox:
+                pmatch = calc_pmatch(lnome, n.lower())
+            else:
+                pmatch = 1.0 if lnome == n.lower() else 0.0
+
             if pmatch > best_pmatch:
                 best_pmatch = pmatch
                 best = sub
@@ -75,11 +88,12 @@ async def getInfraElementByFullImportName(mdb, fullName:str) -> InfraElement:
     return infraElement
 
 
-def buildFullImportName(endereco: Endereco, nivel:str):
+def buildFullImportName(endereco: Endereco, nivel: int):
     if nivel == 0:
         return ""
     upname = buildFullImportName(endereco, increase_address_level(nivel))
-    cname = endereco.getFieldValueByLevel(nivel).replace("/","-")
+    cname = endereco.getFieldValueByLevel(nivel)
+    cname = cname.replace("/","-")
     return upname+"/"+cname
 
 
@@ -152,7 +166,7 @@ async def importAddress(mdb, importResult: ImportAddressResult, importExecUID:st
 
     cname = endereco.getFieldValueByLevel(nivel)
     if not infraElement:
-        infraElement:InfraElement = findApprox(cname, children)
+        infraElement:InfraElement = findApprox(cname, children, nivel)
 
     if not infraElement:
         infraElement:InfraElement = await createInfraElement(str(parent.id), str(sparent.id), cname)
@@ -168,7 +182,8 @@ async def importAddress(mdb, importResult: ImportAddressResult, importExecUID:st
     else:
         changed = False
         infraElement.importExecUID = importExecUID
-        infraElement.parentId = parent.id
+        if not infraElement.manuallyMoved:
+            infraElement.parentId = sparent.id
         found = False
         for cn in infraElement.addressLevelValues:
             found = found or cn == cname

@@ -253,7 +253,7 @@ async def moveTransactionCallback(session, elemId, toParentId):
             break
         _id = ascendant.parent
 
-    await mdb.infra.update_one({"_id": elem_id}, {'$set': {'parentId': to_parent_id}}, session=s)
+    await mdb.infra.update_one({"_id": elem_id}, {'$set': {'parentId': to_parent_id, 'manuallyMoved':True}}, session=s)
 
 
 async def moveInfraElement(elemId: str, toParentId: str):

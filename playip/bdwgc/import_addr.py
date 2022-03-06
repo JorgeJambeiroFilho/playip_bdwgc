@@ -1,3 +1,5 @@
+import asyncio
+import time
 import uuid
 from typing import Optional
 
@@ -19,13 +21,32 @@ def cf(s):
 
 #curl -X 'GET' 'http://app.playip.com.br/playipispbd/import/importaddresses/wgc/Cotia' -H 'accept: application/json' -H 'access-token: djd62o$w*N<H$k8'
 
+onGoingImportAddressResult: ImportAddressResult = None
 
-@importrouter.get("/importaddresses/{import_key}/{cidade_alvo}", response_model=ImportAddressResult)
-async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressResult:
+@importrouter.get("/importaddresses", response_model=ImportAddressResult)
+async def importAddresses() -> ImportAddressResult:
+    global onGoingImportAddressResult
+    if onGoingImportAddressResult is None or onGoingImportAddressResult.complete:
+        onGoingImportAddressResult = ImportAddressResult()
+        asyncio.create_task(importAddressesIntern())
+    return onGoingImportAddressResult
+
+@importrouter.get("/getimportaddressesresult", response_model=ImportAddressResult)
+async def getImportAddressesResult() -> ImportAddressResult:
+    global onGoingImportAddressResult
+    if onGoingImportAddressResult is None:
+        onGoingImportAddressResult = ImportAddressResult()
+        onGoingImportAddressResult.complete = True
+    return onGoingImportAddressResult
+
+
+async def importAddressesIntern() -> ImportAddressResult:
     mdb = getBotMongoDB()
     wdb = getWDB()
-    res: ImportAddressResult = ImportAddressResult()
+    global onGoingImportAddressResult
+    res: ImportAddressResult = onGoingImportAddressResult
     importExecUID: str = str(uuid.uuid1())
+    time_ini = time.time()
 
     with wdb.cursor() as cursor:
         cursor.execute("""
@@ -55,6 +76,9 @@ async def importAddresses(import_key: str, cidade_alvo: str) -> ImportAddressRes
             endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf)
             await importAddress(mdb, res, importExecUID, endereco)
             row = cursor.fetchone()
-
+            res.num_processed += 1
+    time_end = time.time()
+    res.complete = True
+    print("Tempo de importação ", time_end - time_ini)
     print(res)
     return res

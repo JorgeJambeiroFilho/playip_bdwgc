@@ -2,7 +2,7 @@ from typing import Optional
 
 import pydantic
 
-address_level_fields = [ "root", "uf", "cidade", "bairro", "logradouro"]
+address_level_fields = [ "root", "uf", "cidade", "bairro", "logradouro", "numero", "complemento"]
 
 def increase_address_level(level:int):
     if level == -1:
@@ -42,7 +42,10 @@ class Endereco(pydantic.BaseModel):
         setattr(self, fn, value)
     def getFieldValueByLevel(self, level:int):
         fn:str = getFieldNameByLevel(level)
-        return getattr(self, fn)
+        v = getattr(self, fn)
+        if v is None:
+            v = ""
+        return v
 
     def __repr__(self):
         return self.logradouro + ", " + self.numero + \
