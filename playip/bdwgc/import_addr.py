@@ -20,6 +20,7 @@ def cf(s):
 
 
 #curl -X 'GET' 'http://app.playip.com.br/playipispbd/import/importaddresses/wgc/Cotia' -H 'accept: application/json' -H 'access-token: djd62o$w*N<H$k8'
+#curl -X 'GET' 'http://app.playip.com.br/playipchathelper/infra/clear' -H 'accept: application/json'
 
 onGoingImportAddressResult: ImportAddressResult = None
 

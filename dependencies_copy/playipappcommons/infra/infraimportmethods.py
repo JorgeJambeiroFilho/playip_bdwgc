@@ -59,7 +59,7 @@ def calc_pmatch(nome, n):
 def findApprox(nome:str, subs: List[InfraElement], nivel: int):
 
     fieldName = getFieldNameByLevel(nivel)
-    useApprox = fieldName == "logradouro"
+    useApprox = fieldName == "logradouro" or fieldName == "bairro"
     lnome = nome.lower()
     best:InfraElement = None
     best_pmatch = 0
