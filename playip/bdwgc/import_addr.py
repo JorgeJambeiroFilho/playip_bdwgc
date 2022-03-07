@@ -7,7 +7,7 @@ from fastapi import APIRouter
 
 from playip.bdwgc.bdwgc import getWDB
 from playipappcommons.infra.endereco import Endereco
-from playipappcommons.infra.infraimportmethods import ImportAddressResult, importAddress
+from playipappcommons.infra.infraimportmethods import ImportAddressResult, importOrFindAddress
 from playipappcommons.playipchatmongo import getBotMongoDB
 
 importrouter = APIRouter(prefix="/playipispbd/import")
@@ -75,7 +75,7 @@ async def importAddressesIntern() -> ImportAddressResult:
             cidade: Optional[str] = cf(row[7])
             uf: Optional[str] = cf(row[8])
             endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf)
-            await importAddress(mdb, res, importExecUID, endereco)
+            await importOrFindAddress(mdb, res, importExecUID, endereco)
             row = cursor.fetchone()
             res.num_processed += 1
     time_end = time.time()

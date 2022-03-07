@@ -5,7 +5,7 @@ from bson import ObjectId
 
 from playipappcommons.infra.endereco import Endereco, increase_address_level, getFieldNameByLevel
 from playipappcommons.infra.inframethods import getChildren, createInfraElement, getInfraRoot
-from playipappcommons.infra.inframodels import InfraElement, AddressQuery
+from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
 from playipappcommons.util.levenshtein import levenshteinDistanceDP
 
 
@@ -142,9 +142,11 @@ def findByRules(endereco: Endereco, candidates:List[InfraElement]) -> Optional[I
 #             await mdb.infra.replace_one({"_id": child.id}, elemDict)
 
 
+async def findAddress(mdb, endereco: Endereco) -> Optional[InfraElement]:
+    return await importOrFindAddress(mdb, None, None, endereco, doImport=False)
 
 
-async def importAddress(mdb, importResult: ImportAddressResult, importExecUID:str, endereco: Endereco, nivel: int = -1) -> Optional[InfraElement]:
+async def importOrFindAddress(mdb, importResult: Optional[ImportAddressResult], importExecUID:Optional[str], endereco: Endereco, nivel: int = -1, doImport: bool = True) -> Optional[InfraElement]:
     if endereco.uf is None or endereco.cidade is None or endereco.bairro is None or endereco.logradouro is None:
         return None
     if nivel == 0:
@@ -152,10 +154,16 @@ async def importAddress(mdb, importResult: ImportAddressResult, importExecUID:st
 
     fullName = buildFullImportName(endereco, nivel)
     infraElement: InfraElement = await getInfraElementByFullImportName(mdb, fullName)
-    if infraElement and infraElement.importExecUID == importExecUID:
+    if infraElement and (infraElement.importExecUID == importExecUID or not doImport):
         return infraElement
 
-    parent: InfraElement = await importAddress(mdb, importResult, importExecUID, endereco, increase_address_level(nivel))
+    parent: InfraElement = await importOrFindAddress(mdb, importResult, importExecUID, endereco, increase_address_level(nivel))
+    if parent is None:
+        if doImport:
+            return None
+        else:
+            raise Exception("Nó pai não criado em infaestrutura")
+
     children: List[InfraElement] = await getAddressChildren(mdb, parent.id)
     sparent = parent
     intermediateParent: InfraElement = findByRules(endereco, children)
@@ -167,6 +175,9 @@ async def importAddress(mdb, importResult: ImportAddressResult, importExecUID:st
     cname = endereco.getFieldValueByLevel(nivel)
     if not infraElement:
         infraElement:InfraElement = findApprox(cname, children, nivel)
+
+    if not doImport:
+        return infraElement
 
     if not infraElement:
         infraElement:InfraElement = await createInfraElement(str(parent.id), str(sparent.id), cname)
@@ -209,3 +220,5 @@ async def importAddress(mdb, importResult: ImportAddressResult, importExecUID:st
 
 
     return infraElement
+
+

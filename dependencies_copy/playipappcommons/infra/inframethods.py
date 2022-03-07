@@ -3,6 +3,7 @@ from typing import List
 
 from bson import ObjectId
 
+from playipappcommons.famongo import FAMongoId
 from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
 from playipappcommons.playipchatmongo import getBotMongoDB, getMongoClient
 
@@ -68,79 +69,77 @@ async def getInfraChildren(parentid:str=None) -> List[InfraElement]:
 #    res = await mdb.singletons.replace_one({"type":"infra"}, body, upsert=True)
 #    return { "error":"ok" }
 
-async def getInfraElementFailState(id:str):
+async def getInfraElementFailState(id:FAMongoId) -> AddressInFail:
     mdb = getBotMongoDB()
     _id = ObjectId(id)
+
+    res: AddressInFail = AddressInFail(located=True, inFail=False)
     while _id:
         ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}))
-        if ascendant.inFail:
-            return True
+        if ascendant.inFail and ascendant.dtPrevisao > res.dtPrevisao:
+            res = AddressInFail(located=True, inFail=True, dtInterrupcao=ascendant.dtInterrupcao, dtPrevisao=ascendant.dtPrevisao)
         if not ascendant.parentId:
             break
         _id = ascendant.parentId
-    return False
+    return res
 
-
-async def isAddressInFail(addressQuery: AddressQuery) -> AddressInFail:
-    return await isAddressInFailIntern(addressQuery)
 
 stripPattern = re.compile('[\W_]+')
 def stripNonAlphaNum(s):
     return stripPattern.sub('', s)
 
 async def isAddressInFailIntern(addressQuery: AddressQuery) -> AddressInFail:
-     address = addressQuery.address
-     if addressQuery.endereco:
+    address = addressQuery.address
+    if addressQuery.endereco:
         address = str(addressQuery.endereco)
-     test = addressQuery.test
+    test = addressQuery.test
 
-     mdb = getBotMongoDB()
-     ww = address.split()
-     ww = [stripNonAlphaNum(w) for w in ww]
-     if len(ww)==0:
-         return AddressInFail(inFail=False, noFail=True)
-     candidates = {}
+    mdb = getBotMongoDB()
+    ww = address.split()
+    ww = [stripNonAlphaNum(w) for w in ww]
+    if len(ww)==0:
+        return AddressInFail(inFail=False, noFail=True)
+    candidates = {}
 
-#     if len(ww)==1:
+    #     if len(ww)==1:
 
-     rootl: List[InfraElement] = await getChildren(mdb, None)
-     if len(rootl) !=1 :
-         AddressInFail(inFail=False, noFail=False)
-     root = rootl[0]
-     if root.inFail:
-         return AddressInFail(inFail=True, noFail=False)
+    rootl: List[InfraElement] = await getChildren(mdb, None)
+    if len(rootl) !=1:
+        return AddressInFail(inFail=False, noFail=False)
+    root = rootl[0]
+    if root.inFail:
+        return AddressInFail(inFail=True, noFail=False)
 
-     for i in range(len(ww)):
-         cursor = mdb.infra.find({"filters.indexedWordPair":ww[i]})
+    for i in range(len(ww)):
+        cursor = mdb.infra.find({"filters.indexedWordPair":ww[i]})
         # for elem in await cursor.to_list(1000):
-         async for elem in cursor:
-             candidates[elem["_id"]] = InfraElement(**elem)
+        async for elem in cursor:
+            candidates[elem["_id"]] = InfraElement(**elem)
 
-     if len(ww) > 1:
-         for i in range(len(ww)-1):
-             cursor = mdb.infra.find({"filters.indexedWordPair": ww[i] + ' ' + ww[i+1]})
-             async for elem in cursor:
-                 candidates[elem["_id"]] = InfraElement(**elem)
+    if len(ww) > 1:
+        for i in range(len(ww)-1):
+            cursor = mdb.infra.find({"filters.indexedWordPair": ww[i] + ' ' + ww[i+1]})
+            async for elem in cursor:
+                candidates[elem["_id"]] = InfraElement(**elem)
 
+    approved = []
+    for cand in candidates.values():
+        if cand.checkFilters(addressQuery):
+            approved.append(cand)
 
+    res: AddressInFail = AddressInFail(located=True, inFail=False)
+    for appr in approved:
+        apprFailState = await getInfraElementFailState(appr.id)
+        if apprFailState.inFail and apprFailState.dtPrevisao > res.dtPrevisao:
+            res = AddressInFail(located=True, inFail=True, dtInterrupcao=ascendant.dtInterrupcao, dtPrevisao=ascendant.dtPrevisao)
 
-     approved = []
-     for cand in candidates.values():
-         if cand.checkFilters(addressQuery):
-             approved.append(cand)
+    return res
 
-     inFail = False
-     noFail = False
-     for appr in approved:
-         inf = await getInfraElementFailState(appr.id)
-         inFail |= inf
-         noFail |= not inf
-
-     addrInFail = AddressInFail(inFail=inFail, noFail=noFail)
-     if test:
-         addrInFail.elems = [ap.name for ap in approved]
-
-     return addrInFail
+    # addrInFail = AddressInFail(inFail=inFail, noFail=noFail)
+    # if test:
+    #     addrInFail.elems = [ap.name for ap in approved]
+    #
+    # return addrInFail
 
 async def adjustInfraElement(infraElement: InfraElement):
     mdb = getBotMongoDB()
@@ -153,7 +152,7 @@ async def adjustInfraElement(infraElement: InfraElement):
     elemDict = infraElement.dict(by_alias=True)
     await mdb.infra.replace_one({"_id": infraElement.id}, elemDict)
 
-    return { "error":"ok" }
+    return {"error": "ok"}
 
 async def setInfraElementFailState(id:str, inFail:bool):
     mdb = getBotMongoDB()
@@ -175,7 +174,7 @@ async def setInfraElementFailState(id:str, inFail:bool):
                         break
                     _id = ascendant.parentId
 
-    return { "error":"ok" }
+    return {"error": "ok"}
 
 
 async def createInfraElement(parentid: str, addressparentid:str = None, name = "NoName"):

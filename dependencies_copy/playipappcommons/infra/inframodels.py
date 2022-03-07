@@ -89,6 +89,9 @@ class InfraElement(pydantic.BaseModel):
     numDescendantsInFail: int = 0
     filters: List[AddressFilter] = []
     message:str = ""
+    dtInterrupcao: float = 0
+    dtPrevisao: float = 0
+
 
     parentAddressId: Optional[FAMongoId]  # pai em termos de endereco.
     addressLevel: Optional[int] = None # determina o campo de endereço responsavel pela passagem do pai para o presente nó. Veja Endereco.getFieldNameByLevel()
@@ -130,9 +133,15 @@ def InfraElementsToDict(elems: List[InfraElement]):
 
 
 class AddressInFail(pydantic.BaseModel):
+    located: bool
     inFail: bool
-    noFail:bool #o resultado pode ser ambíguo, como True em ambas estas variáveis se mais de uma regra casas com o endereço
-    elems = [] #para testes isto interessa, fora isto a lista vem sempre vazia
+    descricao: Optional[str] = None
+    dtInterrupcao: float = 0
+    dtPrevisao: float = 0
 
-    #class Config:
-    #    json_encoders = { list: InfraElementsToDict }
+
+    # noFail: bool #o resultado pode ser ambíguo, como True em ambas estas variáveis se mais de uma regra casas com o endereço
+    # elems = []  #para testes isto interessa, fora isto a lista vem sempre vazia
+    #
+    # #class Config:
+    # #    json_encoders = { list: InfraElementsToDict }
