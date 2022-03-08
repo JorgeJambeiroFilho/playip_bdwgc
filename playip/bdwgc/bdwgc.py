@@ -163,7 +163,9 @@ async def getContract(id_contract:str) -> ContractData:
     with wdb.cursor() as cursor:
         cursor.execute("""
         SELECT  
-                Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, Endereco.TX_CEP as cep, Condominio.TX_NOME_LOCALIDADE as condominio, Cidade.TX_NOME_LOCALIDADE as cidade, Endereco.TX_BAIRRO, UF.UF_ID        
+                Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, 
+                Endereco.TX_CEP as cep, Condominio.NM_CONDOMINIO as condominio, Cidade.TX_NOME_LOCALIDADE as cidade, 
+                Endereco.TX_BAIRRO as bairro, UF.UF_ID as uf_id, UF.NM_UF as uf        
         FROM 
                 Contrato as Contrato         
                 INNER JOIN Endereco as Endereco on (Endereco.ID_ENDERECO=Contrato.ID_ENDERECO_INSTALACAO)
