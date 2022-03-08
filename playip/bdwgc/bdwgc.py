@@ -165,7 +165,7 @@ async def getContract(id_contract:str) -> ContractData:
         SELECT  
                 Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, 
                 Endereco.TX_CEP as cep, Condominio.NM_CONDOMINIO as condominio, Cidade.TX_NOME_LOCALIDADE as cidade, 
-                Endereco.TX_BAIRRO as bairro, UF.UF_ID as uf_id, UF.NM_UF as uf        
+                Endereco.TX_BAIRRO as bairro, UF.ID_UF as id_uf, UF.NM_UF as uf        
         FROM 
                 Contrato as Contrato         
                 INNER JOIN Endereco as Endereco on (Endereco.ID_ENDERECO=Contrato.ID_ENDERECO_INSTALACAO)
