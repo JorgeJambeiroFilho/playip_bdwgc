@@ -133,8 +133,8 @@ def InfraElementsToDict(elems: List[InfraElement]):
 
 
 class AddressInFail(pydantic.BaseModel):
-    located: bool
-    inFail: bool
+    located: bool = False
+    inFail: bool = False
     descricao: Optional[str] = None
     dtInterrupcao: float = 0
     dtPrevisao: float = 0

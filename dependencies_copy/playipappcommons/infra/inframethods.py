@@ -76,8 +76,8 @@ async def getInfraElementFailState(id:FAMongoId) -> AddressInFail:
     res: AddressInFail = AddressInFail(located=True, inFail=False)
     while _id:
         ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}))
-        if ascendant.inFail and ascendant.dtPrevisao > res.dtPrevisao:
-            res = AddressInFail(located=True, inFail=True, dtInterrupcao=ascendant.dtInterrupcao, dtPrevisao=ascendant.dtPrevisao)
+        if ascendant.inFail and (not res.inFail or ascendant.dtPrevisao > res.dtPrevisao):
+            res = AddressInFail(located=True, inFail=True, dtInterrupcao=ascendant.dtInterrupcao, dtPrevisao=ascendant.dtPrevisao, descricao=ascendant.message)
         if not ascendant.parentId:
             break
         _id = ascendant.parentId
