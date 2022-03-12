@@ -123,21 +123,21 @@ async def getContract(id_contract:str) -> ContractData:
 
           SELECT  NM_PACOTE_SERVICO, VL_DOWNLOAD, VL_UPLOAD, s.VL_SERVICO, cps.DT_ATIVACAO, cps.DT_DESATIVACAO, 
                   dici.ID_TIPO_MEIO_ACESSO, dici.ID_TIPO_TECNOLOGIA, dici.ID_TIPO_PRODUTO, 
-                  tmeio.TX_DESCRICAO_TIPO, ttec.TX_DESCRICAO_TIPO, tprod.TX_DESCRICAO_TIPO, uname.TX_USERNAME
+                  tmeio.TX_DESCRICAO_TIPO, ttec.TX_DESCRICAO_TIPO, tprod.TX_DESCRICAO_TIPO, uname.TX_USERNAME,
+                  bloq.ID_CONTRATO as bloq_id
           FROM 
-                  ContratoItem as ci, PacoteServico as ps, PacoteServico_Servico as s, Contrato_PacoteServico_Servico as cps, Servico_DICI as dici,
-                  TiposDiversos as tmeio, TiposDiversos as ttec, TiposDiversos as tprod, UserName as uname
+                  ContratoItem as ci 
+                  INNER JOIN PacoteServico as ps on (ci.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO) 
+                  INNER JOIN PacoteServico_Servico as s on (ps.ID_PACOTE_SERVICO=s.ID_PACOTE_SERVICO) 
+                  INNER JOIN Contrato_PacoteServico_Servico as cps on (cps.ID_SERVICO=s.ID_SERVICO and cps.ID_CONTRATO=ci.ID_CONTRATO)
+                  INNER JOIN Servico_DICI as dici on (dici.ID_SERVICO=cps.ID_SERVICO)
+                  INNER JOIN TiposDiversos as tmeio on (tmeio.ID_TIPO_DIVERSOS=dici.ID_TIPO_MEIO_ACESSO) 
+                  INNER JOIN TiposDiversos as ttec on (ttec.ID_TIPO_DIVERSOS=dici.ID_TIPO_TECNOLOGIA) 
+                  INNER JOIN TiposDiversos as tprod on (tprod.ID_TIPO_DIVERSOS=dici.ID_TIPO_PRODUTO) 
+                  INNER JOIN UserName as uname on (ci.ID_CONTRATO=uname.ID_CONTRATO)
+                  LEFT JOIN CONTRATOS_BLOQUEADOS as bloq on (bloq.ID_CONTRATO=ci.ID_CONTRATO)
           WHERE 
                 ci.ID_CONTRATO={param_id_contrato} and 
-                ci.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO and 
-                ps.ID_PACOTE_SERVICO=s.ID_PACOTE_SERVICO and 
-                cps.ID_SERVICO=s.ID_SERVICO and
-                cps.ID_CONTRATO=ci.ID_CONTRATO and
-                dici.ID_SERVICO=cps.ID_SERVICO and
-                tmeio.ID_TIPO_DIVERSOS=dici.ID_TIPO_MEIO_ACESSO and
-                ttec.ID_TIPO_DIVERSOS=dici.ID_TIPO_TECNOLOGIA and
-                tprod.ID_TIPO_DIVERSOS=dici.ID_TIPO_PRODUTO and
-                ci.ID_CONTRATO=uname.ID_CONTRATO and
                 uname.dt_desativacao is null and
                 s.VL_DOWNLOAD > 0
           ORDER BY
@@ -154,11 +154,12 @@ async def getContract(id_contract:str) -> ContractData:
             is_radio = row[9]=="radio" # a outra opção no wgc é "fibra"
             is_ftth = "ftth" in str(row[10]).lower()
             userName = row[12]
+            bloqId = row[13]
+            isBlocked = bloqId is not None
 
             home_access_type = "smartolt" if is_ftth else "aircontrol" if is_radio else "none"
 
-
-            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, is_ftth=is_ftth, found=True, user_name=userName, home_access_key=userName, home_access_type=home_access_type)
+            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, is_ftth=is_ftth, found=True, user_name=userName, home_access_key=userName, home_access_type=home_access_type, bloqueado=isBlocked)
 
     with wdb.cursor() as cursor:
         cursor.execute("""

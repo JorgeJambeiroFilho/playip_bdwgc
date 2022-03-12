@@ -18,6 +18,7 @@ class ContractData(pydantic.BaseModel):
     home_access_key:Optional[str] = None
     home_access_type:Optional[str] = None
     endereco: Optional[Endereco] = None
+    bloqueado: Optional[bool] = None
 
 class Client(pydantic.BaseModel):
     found: bool = False
