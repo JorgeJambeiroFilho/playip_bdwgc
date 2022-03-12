@@ -177,6 +177,38 @@ async def setInfraElementFailState(id:str, inFail:bool):
     return {"error": "ok"}
 
 
+async def setInfraElementFailStateAndAdjustInfraElement(infraElement: InfraElement):
+    mdb = getBotMongoDB()
+    mdbcli = getMongoClient()
+
+    async with await mdbcli.start_session() as s:
+        async with s.start_transaction():
+
+            oldElem = InfraElement(**await mdb.infra.find_one({"_id": infraElement.id}, session=s))
+
+            oldInFail = oldElem.inFail
+            inFail = infraElement.inFail
+            _id = infraElement.id
+
+            infraElement.numDescendantsInFail = oldElem.numDescendantsInFail
+            infraElement.parentId = oldElem.parentId
+            infraElement.adjustIndexedWordPairs()
+            elemDict = infraElement.dict(by_alias=True)
+            await mdb.infra.replace_one({"_id": infraElement.id}, elemDict, session=s)
+
+            if inFail != oldInFail:
+                inc = 1 if inFail else -1
+                while _id:
+                    ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}, session=s))
+                    ascendant.numDescendantsInFail += inc
+                    mdb.infra.update_one({"_id": _id}, {'$set': {'numDescendantsInFail': ascendant.numDescendantsInFail}}, session=s)
+                    if not ascendant.parentId:
+                        break
+                    _id = ascendant.parentId
+
+    return {"error": "ok"}
+
+
 async def createInfraElement(parentid: str, addressparentid:str = None, name = "NoName"):
     mdb = getBotMongoDB()
     if addressparentid is None:
