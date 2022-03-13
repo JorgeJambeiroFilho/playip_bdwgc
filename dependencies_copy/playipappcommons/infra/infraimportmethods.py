@@ -157,9 +157,9 @@ async def importOrFindAddress(mdb, importResult: Optional[ImportAddressResult], 
     if infraElement and (infraElement.importExecUID == importExecUID or not doImport):
         return infraElement
 
-    parent: InfraElement = await importOrFindAddress(mdb, importResult, importExecUID, endereco, increase_address_level(nivel))
+    parent: InfraElement = await importOrFindAddress(mdb, importResult, importExecUID, endereco, increase_address_level(nivel), doImport=doImport)
     if parent is None:
-        if doImport:
+        if not doImport:
             return None
         else:
             raise Exception("Nó pai não criado em infaestrutura")
