@@ -30,6 +30,12 @@ async def clearInfra():
     return {"error": "ok"}
 
 
+async def clearAllFails():
+    mdb = getBotMongoDB()
+    await mdb.infra.update_many({}, {'$set': {'inFail': False, "numDescendantsInFail":0}})
+    return {"error": "ok"}
+
+
 async def getInfraElements(ids: List[str]) -> List[InfraElement]:
     mdb = getBotMongoDB()
     elems: List[InfraElement] = []
@@ -164,12 +170,12 @@ async def setInfraElementFailState(id:str, inFail:bool):
             _id = ObjectId(id)
             elem = InfraElement(**await mdb.infra.find_one({"_id": _id}, session=s))
             if inFail != elem.inFail:
-                mdb.infra.update_one({"_id": _id}, {'$set': {'inFail': inFail}},session=s)
+                await mdb.infra.update_one({"_id": _id}, {'$set': {'inFail': inFail}},session=s)
                 inc = 1 if inFail else -1
                 while _id:
                     ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}, session=s))
                     ascendant.numDescendantsInFail += inc
-                    mdb.infra.update_one({"_id": _id}, {'$set': {'numDescendantsInFail': ascendant.numDescendantsInFail}}, session=s)
+                    await mdb.infra.update_one({"_id": _id}, {'$set': {'numDescendantsInFail': ascendant.numDescendantsInFail}}, session=s)
                     if not ascendant.parentId:
                         break
                     _id = ascendant.parentId
@@ -199,9 +205,10 @@ async def setInfraElementFailStateAndAdjustInfraElement(infraElement: InfraEleme
             if inFail != oldInFail:
                 inc = 1 if inFail else -1
                 while _id:
+                    #print ("AjustNumDescFail "+str(_id))
                     ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}, session=s))
                     ascendant.numDescendantsInFail += inc
-                    mdb.infra.update_one({"_id": _id}, {'$set': {'numDescendantsInFail': ascendant.numDescendantsInFail}}, session=s)
+                    await mdb.infra.update_one({"_id": _id}, {'$set': {'numDescendantsInFail': ascendant.numDescendantsInFail}}, session=s)
                     if not ascendant.parentId:
                         break
                     _id = ascendant.parentId
