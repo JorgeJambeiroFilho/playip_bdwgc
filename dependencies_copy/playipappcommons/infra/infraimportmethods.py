@@ -20,6 +20,7 @@ class ImportAddressResult(pydantic.BaseModel):
     num_numeros: int = 0
     num_complementos: int = 0
     num_ufs: int = 0
+    num_medianetworks: int = 0
 
     num_alt_bairros: int = 0
     num_alt_cidades: int = 0
@@ -28,6 +29,7 @@ class ImportAddressResult(pydantic.BaseModel):
     num_alt_numeros: int = 0
     num_alt_complementos: int = 0
     num_alt_ufs: int = 0
+    num_alt_medianetworks: int = 0
 
     last_id_endereco: int = 0
 

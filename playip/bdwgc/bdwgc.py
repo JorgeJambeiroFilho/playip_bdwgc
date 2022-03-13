@@ -147,6 +147,7 @@ async def getContract(id_contract:str) -> ContractData:
         row = cursor.fetchone()
         if not row or row[5]: #se tem data de desativação, não vale
             res = ContractData(id_contract=id_contract, found=False)
+            return res
         else:
             name = row[0]
             dl = row[1]
@@ -187,7 +188,8 @@ async def getContract(id_contract:str) -> ContractData:
             cidade: Optional[str] = row[5]
             bairro: Optional[str] = row[6]
             uf: Optional[str] = row[7]
-            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade, bairro=bairro, uf=uf)
+            medianetwork = "Rádio" if is_radio else "Cabo"
+            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade, bairro=bairro, uf=uf, medianetwork=medianetwork)
             res.endereco = endereco
 
     return res

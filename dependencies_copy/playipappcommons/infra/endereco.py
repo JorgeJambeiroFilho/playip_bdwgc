@@ -2,7 +2,7 @@ from typing import Optional
 
 import pydantic
 
-address_level_fields = [ "root", "uf", "cidade", "bairro", "logradouro", "numero", "complemento"]
+address_level_fields = [ "root", "medianetwork", "uf", "cidade", "bairro", "logradouro", "numero", "complemento"]
 
 def increase_address_level(level:int):
     if level == -1:
@@ -35,7 +35,7 @@ class Endereco(pydantic.BaseModel):
     condominio: Optional[str]
     cidade: Optional[str]
     uf: Optional[str]
-
+    medianetwork: Optional[str]
 
     def setFieldValueByLevel(self, level:int, value:str):
         fn: str = getFieldNameByLevel(level)
@@ -52,7 +52,8 @@ class Endereco(pydantic.BaseModel):
                (", " + self.complemento if self.complemento else "") + \
                (", " + self.condominio if self.condominio else "") + \
                (", " + self.bairro if self.bairro else "") + ". " \
-               + self.cidade + ". " + \
-               ("CEP " + self.cep if self.cep else "") + ". "
+               + self.cidade + "-" + self.uf + ". " + \
+               ("CEP " + self.cep + "." if self.cep else "") + \
+               ("MediaNetwork" + self.medianetwork + "." if self.medianetwork else "")
 
 
