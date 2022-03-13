@@ -57,6 +57,7 @@ async def importAddressesIntern() -> ImportAddressResult:
                     Cidade.TX_NOME_LOCALIDADE as cidade,UF.ID_UF as id_uf, UF.NM_UF as uf, tmeio.TX_DESCRICAO_TIPO        
             FROM 
                     ContratoItem as ci 
+                    INNER JOIN Contrato as Contrato on (ci.ID_CONTRATO = Contrato.ID_CONTRATO)
                     INNER JOIN PacoteServico as ps on (ci.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO) 
                     INNER JOIN PacoteServico_Servico as s on (ps.ID_PACOTE_SERVICO=s.ID_PACOTE_SERVICO) 
                     INNER JOIN Contrato_PacoteServico_Servico as cps on (cps.ID_SERVICO=s.ID_SERVICO and cps.ID_CONTRATO=ci.ID_CONTRATO)
