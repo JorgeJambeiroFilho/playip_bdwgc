@@ -12,11 +12,13 @@ from starlette.responses import HTMLResponse
 
 from playip.bdwgc.bdwgc import wgcrouter
 from playip.bdwgc.import_addr import importrouter
+from playip.bdwgc.import_analytics import importanalyticsrouter
 
 app = FastAPI()
 
 app.include_router(wgcrouter)
 app.include_router(importrouter)
+app.include_router(importanalyticsrouter)
 
 app.add_middleware(
     CORSMiddleware,
