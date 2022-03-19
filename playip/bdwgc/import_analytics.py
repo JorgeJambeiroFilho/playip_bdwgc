@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 from typing import Iterable
 
 from fastapi import APIRouter
@@ -28,6 +29,9 @@ async def getImportAddressesResult() -> ImportAnalyticDataResult:
         onGoingImportAnalyticDataResult.complete = True
     return onGoingImportAnalyticDataResult
 
+
+class ObjRow:
+    pass
 
 async def getContratoPacoteServicoIterator():
     wdb = getWDB()
@@ -92,16 +96,27 @@ async def getContratoPacoteServicoIterator():
                 LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
                 LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
           
-          WHERE
-                NM_PROD = "internet"  
-          ORDER BY 
-                    UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
-                    SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO
+            WHERE
+                tprod.TX_DESCRICAO_TIPO = 'internet'  
+            ORDER BY 
+                UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
+                SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO
                          """)
 
+        columns = [column[0] for column in cursor.description]
+        headers = columns
 
-        row = cursor.fetchone()
-        while row:
+        rrow = cursor.fetchone()
+        while rrow:
+
+            row = ObjRow()
+            for h, v in zip(headers, rrow):
+                if isinstance(v, datetime.datetime):
+                    v = v.timestamp()
+                elif isinstance(v, datetime.date):
+                    v = datetime.datetime(v.year, v.month, v.day)
+                    v = v.timestamp()
+                row.__setattr__(h, v)
 
             endereco: Endereco = Endereco\
             (
@@ -127,11 +142,15 @@ async def getContratoPacoteServicoIterator():
                 upload_speed=row.VL_UPLOAD,
                 VL_PACOTE=row.VL_PACOTE
             )
-            res: ServicePackAndContractAnalyticData = ServicePackAndContractAnalyticData(contract=contract, service=service)
-            yield res
-            row = cursor.fetchone()
+            try:
+                spc: ServicePackAndContractAnalyticData = ServicePackAndContractAnalyticData(contract=contract, service=service)
+            except:
+                res.num_fails += 1
+            res.num_processed += 1
+            yield spc
+            rrow = cursor.fetchone()
 
 
 async def importAllContratoPacoteServico():
-    it: Iterable[ServicePackAndContractAnalyticData] = await getContratoPacoteServicoIterator()
+    it: Iterable[ServicePackAndContractAnalyticData] = getContratoPacoteServicoIterator()
     await count_events_contracts_raw(it)
