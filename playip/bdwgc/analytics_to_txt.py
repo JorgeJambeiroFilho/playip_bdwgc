@@ -10,20 +10,20 @@ cnxn = pyodbc.connect(
 cursor = cnxn.cursor()
 cursor.execute("""
             SELECT  
-                ci.ID_CONTRATO_ITEM as ID_CONTRATO_ITEM,
-                ci.ID_PACOTE_SERVICO as ID_PACOTE_SERVICO,
-                contrato.ID_CONTRATO as ID_CONTRATO,
-                contrato.DT_INICIO as CONTRATO_DT_INICIO,
-                contrato.DT_FIM as CONTRATO_DT_FIM,
-                contrato.DT_ATIVACAO as CONTRATO_DT_ATIVACAO,
-                contrato.DT_CANCELAMENTO as CONTRATO_DT_CANCELAMENTO,
 
+                cps.ID_CONTRATO_PACOTESERVICO_SERVICO as ID_CONTRATO_PACOTESERVICO_SERVICO,
+                cps.ID_PACOTE_SERVICO as ID_PACOTE_SERVICO,
                 cps.DT_ATIVACAO as SERVICO_DT_ATIVACAO, 
                 cps.DT_DESATIVACAO as SERVICO_DT_DESATIVACAO, 
                 cps.DT_DESISTENCIA as SERVICO_DT_DESISTENCIA, 
                 cps.TX_MOTIVO_CANCELAMENTO as SERVICO_TX_MOTIVO_CANCELAMENTO, 
                 cps.VL_SERVICO as VL_PACOTE_SERVICO,
-                cps.ID_CONTRATO_PACOTESERVICO_SERVICO as ID_CONTRATO_PACOTESERVICO_SERVICO,
+
+                contrato.ID_CONTRATO as ID_CONTRATO,
+                contrato.DT_INICIO as CONTRATO_DT_INICIO,
+                contrato.DT_FIM as CONTRATO_DT_FIM,
+                contrato.DT_ATIVACAO as CONTRATO_DT_ATIVACAO,
+                contrato.DT_CANCELAMENTO as CONTRATO_DT_CANCELAMENTO,
 
                 s.VL_DOWNLOAD as VL_DOWNLOAD, 
                 s.VL_UPLOAD as VL_UPLOAD, 
@@ -47,12 +47,11 @@ cursor.execute("""
 
 
             FROM 
-                ContratoItem as ci 
-                INNER JOIN Contrato as contrato on (ci.ID_CONTRATO=contrato.ID_CONTRATO)
-                INNER JOIN PacoteServico as ps on (ci.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO) 
+                Contrato_PacoteServico_Servico as cps 
+                INNER JOIN Contrato as contrato on (cps.ID_CONTRATO=contrato.ID_CONTRATO)
+                INNER JOIN PacoteServico as ps on (cps.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO) 
                 INNER JOIN PacoteServico_Servico as s on (ps.ID_PACOTE_SERVICO=s.ID_PACOTE_SERVICO)
                 INNER JOIN Servico as ser on (ser.ID_SERVICO=s.ID_SERVICO)  
-                INNER JOIN Contrato_PacoteServico_Servico as cps on (cps.ID_SERVICO=s.ID_SERVICO and cps.ID_CONTRATO=ci.ID_CONTRATO)
                 INNER JOIN Servico_DICI as dici on (dici.ID_SERVICO=cps.ID_SERVICO)
                 INNER JOIN TiposDiversos as tmeio on (tmeio.ID_TIPO_DIVERSOS=dici.ID_TIPO_MEIO_ACESSO) 
                 INNER JOIN TiposDiversos as ttec on (ttec.ID_TIPO_DIVERSOS=dici.ID_TIPO_TECNOLOGIA) 
@@ -64,7 +63,7 @@ cursor.execute("""
                 LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
 
             WHERE
-                tprod.TX_DESCRICAO_TIPO = 'internet'  
+                tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM'i
             ORDER BY 
                 UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
                 SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO
