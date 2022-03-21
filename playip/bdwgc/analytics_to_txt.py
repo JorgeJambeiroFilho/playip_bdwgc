@@ -16,6 +16,7 @@ cursor.execute("""
                 cps.DT_ATIVACAO as SERVICO_DT_ATIVACAO, 
                 cps.DT_DESATIVACAO as SERVICO_DT_DESATIVACAO, 
                 cps.DT_DESISTENCIA as SERVICO_DT_DESISTENCIA, 
+                cps.DT_CADASTRO as SERVICO_DT_CADASTRO,
                 cps.TX_MOTIVO_CANCELAMENTO as SERVICO_TX_MOTIVO_CANCELAMENTO, 
                 cps.VL_SERVICO as VL_PACOTE_SERVICO,
 
@@ -63,9 +64,9 @@ cursor.execute("""
                 LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
 
             WHERE
-                tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM'i
+                tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM'
             ORDER BY 
-                UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
+                UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
                 SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO
             OFFSET 0 ROWS 
             FETCH FIRST 10 ROWS ONLY;

@@ -49,6 +49,7 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
                 cps.DT_ATIVACAO as SERVICO_DT_ATIVACAO, 
                 cps.DT_DESATIVACAO as SERVICO_DT_DESATIVACAO, 
                 cps.DT_DESISTENCIA as SERVICO_DT_DESISTENCIA, 
+                cps.DT_CADASTRO as SERVICO_DT_CADASTRO,
                 cps.TX_MOTIVO_CANCELAMENTO as SERVICO_TX_MOTIVO_CANCELAMENTO, 
                 cps.VL_SERVICO as VL_PACOTE_SERVICO,
 
@@ -98,7 +99,7 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
             WHERE
                 tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM'i
             ORDER BY 
-                UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
+                UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
                 SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO
                          """)
 
@@ -117,10 +118,12 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
                     v = v.timestamp()
                 row.__setattr__(h, v)
 
+            is_radio = row[10] == "radio"  # a outra opção no wgc é "fibra"
+            medianetwork = "Rádio" if is_radio else "Cabo"
             endereco: Endereco = Endereco\
             (
                     logradouro=row.logradouro, numero=row.num, complemento=row.complemento, bairro=row.bairro, cep=row.cep,
-                    condominio=row.condominio, cidade=row.cidade, uf=row.uf, medianetwork="allmedias"
+                    condominio=row.condominio, cidade=row.cidade, uf=row.id_uf, medianetwork=row.medianetwork
             )
             contract: ContractAnalyticData = ContractAnalyticData\
             (
@@ -135,6 +138,7 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
                 DT_ATIVACAO=row.SERVICO_DT_ATIVACAO,
                 DT_DESATIVACAO=row.SERVICO_DT_DESATIVACAO,
                 DT_DESISTENCIA=row.SERVICO_DT_DESISTENCIA,
+                DT_CADASTRO=row.SERVICO_DT_CADASTRO,
                 TX_MOTIVO_CANCELAMENTO=row.SERVICO_TX_MOTIVO_CANCELAMENTO,
                 VL_SERVICO=row.VL_PACOTE, # só há um serviço, relevante,então posso jogar o preço do pacote todod nele para fins estatísticos
                 download_speed=row.VL_DOWNLOAD,
