@@ -134,7 +134,7 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
             )
             service: ServicePackAnalyticData = ServicePackAnalyticData\
             (
-                fullName = row.NM_PROD + "/" + row.NM_MEIO + "/" + row.NM_TEC + "/" + row.NM_PACOTE_SERVICO,
+                fullName = row.NM_PROD + "/" + row.NM_MEIO + "/" + row.NM_TEC + "/" + row.NM_PACOTE_SERVICO, #+ "/",
                 DT_ATIVACAO=row.SERVICO_DT_ATIVACAO,
                 DT_DESATIVACAO=row.SERVICO_DT_DESATIVACAO,
                 DT_DESISTENCIA=row.SERVICO_DT_DESISTENCIA,
