@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import List, Tuple
 
 from bson import ObjectId
 
@@ -16,10 +16,34 @@ async def getChildren(mdb, pid:ObjectId) -> List[InfraElement]:
     #    cursor = mdb.infra.find({"parentId": {"$exists": False}})
 
     res = []
-    for child in await cursor.to_list(500):
+    async for child in cursor:
         res.append(InfraElement(**child))
 
     return res
+
+#retorna liste de pares de (ids, nomes) de descendentes com nível de expansão entre minLevel emaxLevel
+#se minLevel não é especificado, é igual a maxLevel
+async def expandDescendants(mdb, pid:str, maxLevel:int, minLevel:int =-1, prefix:str="") -> List[Tuple[str, str]]:
+
+    if minLevel == -1: minLevel = maxLevel
+    cursor = mdb.infra.find({"parentId":ObjectId(pid)},{"_id":1, "name":1})
+    res: List[(str,str)] = []
+
+    if minLevel == 0:
+        res.append((str(pid), prefix))
+
+
+    if maxLevel >= 1:
+        children: List[(str, str)] = []
+        async for child in cursor:
+            children.append((str(child["_id"]), child["name"].replace("/", "-")))
+
+        for child in children:
+            np = prefix + "/" + child[1] if prefix else child[1]
+            descendants_child = await expandDescendants(mdb, child[0], maxLevel=maxLevel-1, minLevel=minLevel-1, prefix=np)
+            res.extend(descendants_child)
+    return res
+
 
 async def getInfraRoot() -> InfraElement:
     return (await getInfraChildren())[0]
@@ -74,6 +98,61 @@ async def getInfraChildren(parentid:str=None) -> List[InfraElement]:
 #    mdb = getBotMongoDB()
 #    res = await mdb.singletons.replace_one({"type":"infra"}, body, upsert=True)
 #    return { "error":"ok" }
+
+async def getInfraElementFullStructuralName(id:FAMongoId) -> str:
+    mdb = getBotMongoDB()
+    _id = ObjectId(id)
+
+    lis: List[str] = []
+    while _id:
+        ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}))
+        lis.append(ascendant.name)
+        if not ascendant.parentId:
+            break
+        _id = ascendant.parentId
+    lis.reverse()
+    return "/".join(lis)
+
+async def getInfraElementFullAddressName(id:FAMongoId) -> str:
+    mdb = getBotMongoDB()
+    _id = ObjectId(id)
+
+    lis: List[str] = []
+    while _id:
+        ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}))
+        lis.append(ascendant.name)
+        if not ascendant.parentAddressId:
+            break
+        _id = ascendant.parentAddressId
+    lis.reverse()
+    return "/".join(lis)
+
+async def getInfraElementAddressHier(id:FAMongoId) -> List[FAMongoId]:
+    mdb = getBotMongoDB()
+    _id = id #ObjectId(id)
+    lis: List[FAMongoId] = []
+    while _id:
+        ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}))
+        lis.append(ascendant.id)
+        if not ascendant.parentAddressId:
+            break
+        _id = ascendant.parentAddressId
+    lis.reverse()
+    return lis
+
+async def getInfraElementStructuralHier(id:FAMongoId) -> List[FAMongoId]:
+    mdb = getBotMongoDB()
+    _id = id #ObjectId(id)
+    lis: List[FAMongoId] = []
+    while _id:
+        ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}))
+        lis.append(ascendant.id)
+        if not ascendant.parentId:
+            break
+        _id = ascendant.parentId
+    lis.reverse()
+    return lis
+
 
 async def getInfraElementFailState(id:FAMongoId) -> AddressInFail:
     mdb = getBotMongoDB()
@@ -137,7 +216,7 @@ async def isAddressInFailIntern(addressQuery: AddressQuery) -> AddressInFail:
     for appr in approved:
         apprFailState = await getInfraElementFailState(appr.id)
         if apprFailState.inFail and apprFailState.dtPrevisao > res.dtPrevisao:
-            res = AddressInFail(located=True, inFail=True, dtInterrupcao=ascendant.dtInterrupcao, dtPrevisao=ascendant.dtPrevisao)
+            res = AddressInFail(located=True, inFail=True, dtInterrupcao=appr.dtInterrupcao, dtPrevisao=appr.dtPrevisao)
 
     return res
 

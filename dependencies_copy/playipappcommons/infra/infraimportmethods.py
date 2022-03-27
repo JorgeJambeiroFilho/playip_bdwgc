@@ -3,7 +3,7 @@ from typing import List, Optional
 import pydantic
 from bson import ObjectId
 
-from playipappcommons.infra.endereco import Endereco, increase_address_level, getFieldNameByLevel
+from playipappcommons.infra.endereco import Endereco, increase_address_level, getFieldNameByLevel, buildFullImportName
 from playipappcommons.infra.inframethods import getChildren, createInfraElement, getInfraRoot
 from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
 from playipappcommons.util.levenshtein import levenshteinDistanceDP
@@ -20,7 +20,7 @@ class ImportAddressResult(pydantic.BaseModel):
     num_numeros: int = 0
     num_complementos: int = 0
     num_ufs: int = 0
-    num_medianetworks: int = 0
+    num_prefixs: int = 0 #o erro ortográfico tem que ser mantido por enquanto, pois há um acesso dinâmico que falharia
 
     num_alt_bairros: int = 0
     num_alt_cidades: int = 0
@@ -29,7 +29,7 @@ class ImportAddressResult(pydantic.BaseModel):
     num_alt_numeros: int = 0
     num_alt_complementos: int = 0
     num_alt_ufs: int = 0
-    num_alt_medianetworks: int = 0
+    num_alt_prefixs: int = 0
 
     last_id_endereco: int = 0
 
@@ -90,13 +90,6 @@ async def getInfraElementByFullImportName(mdb, fullName:str) -> InfraElement:
     return infraElement
 
 
-def buildFullImportName(endereco: Endereco, nivel: int):
-    if nivel == 0:
-        return ""
-    upname = buildFullImportName(endereco, increase_address_level(nivel))
-    cname = endereco.getFieldValueByLevel(nivel)
-    cname = cname.replace("/","-")
-    return upname+"/"+cname
 
 
 async def getAddressChildren(mdb, pid:ObjectId) -> List[InfraElement]:

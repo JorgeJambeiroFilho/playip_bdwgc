@@ -9,6 +9,8 @@ async def isAddressInFail(addressQuery: AddressQuery) -> AddressInFail:
     if not addressQuery.endereco:
         return await isAddressInFailIntern(addressQuery)
     else:
+        endereco = addressQuery.endereco.copy(deep=True)
+        endereco.prefix = "Infraestrutura-"+addressQuery.medianetwork
         return await isInFail(addressQuery.endereco)
 
 async def isInFail(endereco: Endereco) -> AddressInFail:

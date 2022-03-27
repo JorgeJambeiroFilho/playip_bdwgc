@@ -20,6 +20,10 @@ class ContractData(pydantic.BaseModel):
     endereco: Optional[Endereco] = None
     bloqueado: Optional[bool] = None
 
+    def getMedia(self):
+        return "Rádio" if self.is_radio else "Cabo"
+
+
 class Client(pydantic.BaseModel):
     found: bool = False
     id_client: Optional[str] = None

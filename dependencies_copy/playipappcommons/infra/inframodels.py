@@ -10,7 +10,11 @@ from playipappcommons.infra.endereco import Endereco
 class AddressQuery(pydantic.BaseModel):
     address: Optional[str] = None
     endereco: Optional[Endereco] = None
+    medianetwork: Optional[str] = None
     test:bool = False
+
+    def __init__(self, *args, **kargs):
+        super().__init__(*args, **kargs)
 
 class AddressCondition(pydantic.BaseModel):
     id:Optional[FAMongoId] = Field(alias='_id')

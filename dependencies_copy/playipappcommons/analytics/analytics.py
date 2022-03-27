@@ -1,141 +1,640 @@
-from datetime import datetime
-from typing import Dict, Optional, List
+from __future__ import annotations
 
+import math
+import traceback
+from datetime import datetime
+from typing import Dict, Optional, List, Iterable, Set, AsyncGenerator, cast
+
+import numpy
 import pydantic
 from bson import ObjectId
 from pydantic import Field
 
 from playipappcommons.famongo import FAMongoId
-from playipappcommons.infra.endereco import Endereco
+from playipappcommons.infra.endereco import Endereco, buildFullImportName, address_level_fields
+from playipappcommons.infra.infraimportmethods import findAddress
+from playipappcommons.infra.inframethods import getInfraElementFullAddressName, getInfraElementFullStructuralName, \
+    getInfraElementAddressHier, getInfraElementStructuralHier, expandDescendants
+from playipappcommons.infra.inframodels import InfraElement
 from playipappcommons.playipchatmongo import getBotMongoDB
+from playipappcommons.util.LRUCache import LRUCache
+from playipappcommons.analytics.analyticsmodels import *
 
-class ContractAnalyticData(pydantic.BaseModel):
-    id_contract: str
-    DT_INICIO: datetime
-    DT_FIM: datetime
-    DT_ATIVACAO: datetime
-    DT_CANCELAMENTO: datetime
-    endereco: Endereco
-
-    download_speed: Optional[int] = None
-    upload_speed: Optional[int] = None
-    is_radio: Optional[bool] = None
-    is_ftth: Optional[bool] = None
-    pack_name:Optional[str] = None
-    endereco: Optional[Endereco] = None
-    bloqueado: Optional[bool] = None
+productLevels = 4
+eventLevels = 2
 
 
+def dateToPeriods(moment:float) -> Dict[str, str]:
 
-class ISPEvent(pydantic.BaseModel):
+    dt: datetime = datetime.fromtimestamp(moment)
+    res: Dict[str, str] = {} # period_group, period
 
-    context: str # uma chave que identifica, por exemplo uma área geográfica, uma caracterítica de um cliente ou qualquer outra coisa que normalmente se queira colocar em um filtro
-                 # a chave é composta, podendo indentificar simutaneamente vários critérios de filtragem. Os critéris sao separado por ";"
-
-
-
-    period_group: str #  o grupo de períodos é algo razoavelmente arbitrário. Pode ser, por exemplo, "ANO" ou "MES", mas pode também ser "SEMESTRE:MARCO" indicado que as contabilizações
-                 # são feitas a cada seis meses, mas que os semestres não começam em janeiro e sim em março.
-
-
-    period: str # identifica um periodo de tempo denr do grupo.  Pode ser "2015", "2016/01", etc. O significado deve ser interpretado de acordo com o grupo, mas deve ser suficiente
-                # para uma identificação global. Não adianta identificar o semestre sem identificar o ano, por exemplo.
-                # As identificações devem ser tais que a ordem alfabética resulte na ordem correta
-
-                 # contabilizações de perídos diferentes dentro de um meso contexto ficam no mesmo registro no BD
-
-    event_type: str # pode ser algo como "INSTALACAO", "CANCELAMENTO", "ULTIMO PAGAMENTO", etc
-
-    metric_name: str # algo como "CONTAGEM" ou "VALOR"
-
-    metric_value: float # para "CONTAGEM" deve ser sempre 1
-
-class ISPDateEvent(pydantic.BaseModel):
-
-    context: str # uma chave que identifica, por exemplo uma área geográfica, uma caracterítica de um cliente ou qualquer outra coisa que normalmente se queira colocar em um filtro
-                 # a chave é composta, podendo indentificar simutaneamente vários critérios de filtragem. Os critéris sao separado por ";"
-
-    event_type: str # pode ser algo como "INSTALACAO", "CANCELAMENTO", "ULTIMO PAGAMENTO", etc
-
-    metric_name: str # algo como "CONTAGEM" ou "VALOR"
-
-    metric_value: float # para "CONTAGEM" deve ser sempre 1
-
-    dt: datetime
-
-
-class ISPContextMetrics(pydantic.BaseModel):
-    id: Optional[FAMongoId] = Field(alias='_id')
-    # campos que combinados indentificam o registro
-    context: str
-    event_type: str
-    metric_name: str
-    period_group: str
-
-    period_metric: Dict[str, float]
-
-    def __init__(self, *args, **kargs):
-        super().__init__(*args, **kargs)
-        if not self.id:
-            self.id = FAMongoId()
-
-    class Config:
-        arbitrary_types_allowed = True
-        json_encoders = {
-            ObjectId: str
-        }
-
-    def count(self, iv: ISPEvent):
-        if self.context != iv.context or self.event_type != iv.event_type or self.metric_name != iv.metric_name or self.period_group != iv.period_group:
-            raise Exception("Contabilização de evento em contexto errado")
-
-        v: float = self.period_metric.get(iv.period, 0.0)
-        self.period_metric[iv.period] = v + iv.metric_value
-
-def dateToPeriods(dt:datetime) -> Dict[str, str]:
-
-    res: Dict[str, str] = [] # period_group, period
-
-    res["SEMANA"] = str(dt.year) + "/" + str(dt.month + 1).zfill(2) + "/" + str( (dt.day-1) % 7 + 1)
-    res["QUINZENA"] = str(dt.year) + "/" + str(dt.month + 1).zfill(2) + "/" + str((dt.day - 1) % 15 + 1)
-    res["MES"] = str(dt.year)+"/"+str(dt.month+1)
-    res["TRIMESTRE"] = str(dt.year) + "/" + str(dt.month % 4 + 1).zfill(2)
-    res["SEMESTRE"] = str(dt.year) + "/" + str(dt.month % 4 + 1).zfill(2)
-    res["ANO"] = str(dt.year)
+    #res["SEMANA"] = str(dt.year) + "/" + str(dt.month).zfill(2) + "/S" +   str(min(4, (dt.day-1) // 7) + 1)
+    #res["QUINZENA"] = str(dt.year) + "/" + str(dt.month).zfill(2) + "/Q" + str(min(4, (dt.day-1) // 15) + 1)
+    res["MES"] = str(dt.year)+"/"+str(dt.month).zfill(2)
+    #res["TRIMESTRE"] = str(dt.year) + "/T" + str((dt.month-1) // 4 + 1)
+    #res["SEMESTRE"] = str(dt.year) + "/S" + str((dt.month-1) // 6 + 1)
+    #res["ANO"] = str(dt.year)
 
     return res
 
 
-async def count_event(iv: ISPEvent):
-    mdb = getBotMongoDB()
-    icm = await mdb.ISPContextMetrics.find_one\
-                  (
-                     {
-                        "context": iv.context,
-                        "event_type": iv.event_type,
-                        "metric_name": iv.metric_name,
-                        "period_group": iv.period_group
-                     }
-                  )
-    if not icm:
-        icm = ISPContextMetrics()
+
+class LRUCacheAnalytics(LRUCache):
+
+    def __init__(self, mdb, res:ImportAnalyticDataResult, *args, **kargs):
+        super().__init__(*args, **kargs)
+        self.res = res
+        self.mdb = mdb
+
+    def registerHit(self):
+        self.res.num_cache_hits += 1
+
+    async def load(self, key):
+        icm = await self.mdb.ISPContextMetrics.find_one \
+           (
+                {
+                    "infraElementIds": key[0],
+                    "infraElementOptic": key[1],
+                    "fullProductName": key[2],
+                    "eventType": key[3],
+                    "metricName": key[4],
+                    "period_group": key[5]
+                }
+           )
+        if icm is None:
+            icm = ISPContextMetrics \
+                 (
+                    infraElementIds=key[0],
+                    infraElementOptic=key[1],
+                    fullProductName=key[2],
+                    eventType=key[3],
+                    metricName=key[4],
+                    period_group=key[5],
+                    period_metric={}
+                )
+            self.res.num_creations += 1
+            return icm
+        else:
+            return ISPContextMetrics(**icm)
+
+    async def save(self, key, obj):
+        icm = cast(ISPContextMetrics, obj)
+        icmDict = icm.dict(by_alias=True)
+        self.res.num_updates += 1
+        await self.mdb.ISPContextMetrics.replace_one({"_id": icm.id}, icmDict, upsert=True)
+        print(self.res)
+
+    async def getByIV(self, iv: ISPEvent) -> ISPContextMetrics:
+        key = (iv.infraElementIds, iv.infraElementOptic, iv.fullProductName, iv.eventType, iv.metricName, iv.period_group)
+        return await self.get(key)
+
+async def count_event(iv: ISPEvent, cache: LRUCacheAnalytics):
+    icm:ISPContextMetrics = await cache.getByIV(iv)
     icm.count(iv)
 
-    icmDict = icm.dict(by_alias=True)
-    await mdb.infra.replace_one({"_id": icm.id}, icmDict)
 
-async def count_events(idv: ISPDateEvent):
-
+async def count_events(idv: ISPDateEvent, cache: LRUCacheAnalytics):
+    #print("Enter count event")
     periods: Dict[str, str] = dateToPeriods(idv.dt)
     for period_group, period in periods.items():
         iv: ISPEvent = ISPEvent\
             (
-                context=idv.context,
+                infraElementIds=idv.infraElementIds,
+                infraElementOptic=idv.infraElementOptic,
+                fullProductName=idv.fullProductName,
                 period_group=period_group,
                 period=period,
-                event_type=idv.event_type,
-                metric_name=idv.metric_name,
-                metric_value=idv.metric_value
+                eventType=idv.eventType,
+                metricName=idv.metricName,
+                metricValue=idv.metricValue
             )
-        await count_event(iv)
+        await count_event(iv, cache)
+    #print("Exit count event")
+
+class SemDataDEInicioException(Exception):
+    pass
+
+class SemDownloadException(Exception):
+    pass
+
+
+async def count_events_contract(cdata: ContractAnalyticData, cache: LRUCacheAnalytics):
+
+    if cache.res.num_processed==9696:
+        print("Count_events_contract break")
+
+    try:
+
+        element: Optional[InfraElement] = await findAddress(cache.mdb, cdata.endereco)
+        if element is None:
+            cache.res.num_enderecos_nao_reconhecidos += 1
+            return
+
+        contexts: List[(str, str)] = []
+
+        addressHier = await getInfraElementAddressHier(element.id)
+        addressHier = addressHier[0:1] + addressHier[2:-2] # elimina mídia (cabo / radio) e elementos menores
+        addressHier = [str(x) for x in addressHier]
+        for i in range(len(addressHier)):
+            ids = str(addressHier[i]) #"/".join(addressHier[:i])
+            contexts.append((ids,"address"))
+
+        structuralHier = await getInfraElementStructuralHier(element.id)
+        structuralHier = structuralHier[:-2] # elimina elementos menores
+        structuralHier = [str(x) for x in structuralHier]
+        for i in range(len(structuralHier)):
+            ids = str(structuralHier[i]) #"/".join(structuralHier[:i])
+            contexts.append((ids,"struct"))
+
+        idvs: List[ISPDateEvent] = []
+
+        for context in contexts:
+            #print("context", context)
+
+            if cdata.DT_INICIO:
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="Inicio/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
+                )
+                idvs.append(idv)
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="ContratosValidos/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
+                )
+                idvs.append(idv)
+            else:
+                raise SemDataDEInicioException()
+
+            if cdata.DT_FIM:
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="Fim/", metricName="Contagem", metricValue=1, dt=cdata.DT_FIM
+                )
+                idvs.append(idv)
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="ContratosValidos/", metricName="Contagem", metricValue=-1, dt=cdata.DT_FIM
+                )
+                idvs.append(idv)
+
+
+            if cdata.DT_ATIVACAO:
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="Instalacao/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
+                )
+                idvs.append(idv)
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="ContratosAtivos/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
+                )
+                idvs.append(idv)
+            else:
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="ContratoSemInstalacao/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
+                )
+                idvs.append(idv)
+
+
+
+            if cdata.DT_CANCELAMENTO:
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="Cancelamento/", metricName="Contagem", metricValue=1, dt=cdata.DT_CANCELAMENTO
+                )
+                idvs.append(idv)
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="ContratosAtivos/", metricName="Contagem", metricValue=-1, dt=cdata.DT_CANCELAMENTO
+                )
+                idvs.append(idv)
+
+        if cdata.DT_ATIVACAO:
+            if not cdata.services:
+                print("Contrato sem serviços")
+
+            counted_service = False
+            for i_sp in range(len(cdata.services)):
+                try:
+                    sidvs: List[ISPDateEvent] = []
+                    sp: ServicePackAnalyticData = cdata.services[i_sp]
+                    fullPackNameList = sp.fullName.split("/")
+                    for context in contexts:
+                        for pnivel in range(len(fullPackNameList)):
+                            sl = "/".join((fullPackNameList[:pnivel + 1]))+"/"
+                            #scontext = context + "#" + sl
+                            #print("scontext", scontext)
+                            if sp.DT_ATIVACAO:
+                                if i_sp == 0:
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="ContratatacaoPacote/", metricName="Contagem",metricValue=1, dt=sp.DT_ATIVACAO)
+                                    sidvs.append(idv)
+                                else:
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoEntradaPacote/", metricName="Contagem", metricValue=1, dt=sp.DT_ATIVACAO)
+                                    idvs.append(idv)
+
+                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Contagem", metricValue=1, dt=sp.DT_ATIVACAO)
+                                sidvs.append(idv)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Valor", metricValue=sp.VL_SERVICO, dt=sp.DT_ATIVACAO)
+                                sidvs.append(idv)
+                                if sp.download_speed is None:
+                                    raise SemDownloadException()
+                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=sp.download_speed, dt=sp.DT_ATIVACAO)
+                                sidvs.append(idv)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=sp.upload_speed, dt=sp.DT_ATIVACAO)
+                                sidvs.append(idv)
+                            else:
+                                if i_sp == 0:
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="ContratatacaoPacoteNuncaAtivado/", metricName="Contagem",metricValue=1, dt=sp.DT_CADASTRO)
+                                    sidvs.append(idv)
+                                else:
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoEntradaPacoteNuncaAtivado/", metricName="Contagem", metricValue=1, dt=sp.DT_CADASTRO)
+                                    idvs.append(idv)
+
+
+                            if sp.DT_DESATIVACAO:
+                                if i_sp == len(cdata.services)-1:
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="CancelamentoPacote/", metricName="Contagem",metricValue=1, dt=sp.DT_DESATIVACAO)
+                                    sidvs.append(idv)
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="CancelamentoPacote/"+sp.TX_MOTIVO_CANCELAMENTO+"/", metricName="Contagem", metricValue=1, dt=sp.DT_DESATIVACAO)
+                                    sidvs.append(idv)
+                                else:
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoSaidaPacote/", metricName="Contagem", metricValue=1, dt=sp.DT_DESATIVACAO)
+                                    sidvs.append(idv)
+
+                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Contagem", metricValue=-1, dt=sp.DT_DESATIVACAO)
+                                sidvs.append(idv)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Valor", metricValue=-sp.VL_SERVICO, dt=sp.DT_DESATIVACAO)
+                                sidvs.append(idv)
+                                if sp.download_speed is None:
+                                    raise SemDownloadException()
+                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=-sp.download_speed, dt=sp.DT_DESATIVACAO)
+                                sidvs.append(idv)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=-sp.upload_speed, dt=sp.DT_DESATIVACAO)
+                                sidvs.append(idv)
+
+                    idvs.extend(sidvs)
+
+                except SemDownloadException:
+                    cache.res.num_sem_download += 1
+                    cache.res.num_service_fails += 1
+                except:
+                    traceback.print_exc()
+                    print("Exceção diferente serviço")
+                    cache.res.num_service_fails += 1
+
+                cache.res.num_service_processed += 1
+                counted_service = True
+
+            if not counted_service:
+                print("Serviços não contados")
+
+        for idv in idvs:
+            await count_events(idv, cache)
+
+    except SemDataDEInicioException as sda:
+        cache.res.num_sem_data_inicio += 1
+        cache.res.num_fails += 1
+
+    except:
+        traceback.print_exc()
+        print("Exceção diferente contrato")
+        cache.res.num_fails += 1
+
+    cache.res.num_processed += 1
+
+   # print(cdata)
+
+# async def getFullAddressName(element: InfraElement):
+#     fullAddressName = await getInfraElementFullAddressName(element.id)
+#     fullAddressNameList = fullAddressName.split("/")  # buildFullImportName(cdata.endereco).split("/")
+#     noMediaAddressNameList = fullAddressNameList[0:1] + fullAddressNameList[2:-2]
+#     return "endereco/"+"/".join(noMediaAddressNameList)
+#
+# async def getFullStructuralName(element: InfraElement):
+#     fullStructName = await getInfraElementFullStructuralName(element.id)
+#     fullStructuralNameList = fullStructName.split("/")
+#     return "estrutura/" + "/".join(fullStructuralNameList[:-2])
+
+async def count_events_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalyticData, None], res: ImportAnalyticDataResult):
+    try:
+        mdb = getBotMongoDB()
+        cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, res, 10000)
+        await mdb.ISPContextMetrics.delete_many({})
+        last_contract: Optional[ContractAnalyticData] = None
+        async for spc in it:
+            endereco = spc.contract.endereco
+            if endereco.uf is None or endereco.cidade is None or endereco.bairro is None or endereco.logradouro is None:
+                continue
+
+            # element: Optional[InfraElement] = await findAddress(mdb, endereco)
+            # if element is None:
+            #     res.num_enderecos_nao_reconhecidos += 1
+            #     continue
+
+            if not last_contract or last_contract.id_contract != spc.contract.id_contract:
+                if last_contract:
+                    if True or res.num_processed >= 9500:
+                        await count_events_contract(last_contract, cache)
+                        print(res)
+                    else:
+                        res.num_processed += 1
+                        continue
+                    #if res.num_processed > 10000:
+                    #    break
+                last_contract = spc.contract.copy(deep=True)
+                # last_contract.fullStructName = await getFullStructuralName(element)
+                # last_contract.fullAddressName = await getFullAddressName(element)
+
+            last_contract.services.append(spc.service)
+        if last_contract:
+            await count_events_contract(last_contract, cache)
+            print(res)
+
+    except:
+        traceback.print_exc()
+    finally:
+        await it.aclose()
+        await cache.close()
+        print(res)
+
+
+def getAllPeriodsZeroed(period_group) -> Dict[str, float]:
+    firstYear = 2008
+    lastYear = datetime.now().year
+    period_metric: Dict[str, float] = {}
+    for y in range(firstYear, lastYear+1):
+        year = str(y)
+        if period_group == "SEMESTRE":
+            period_metric[year + "/1"] = 0
+            period_metric[year + "/2"] = 0
+        elif period_group == "TRIMESTRE":
+            period_metric[year + "/1"] = 0
+            period_metric[year + "/2"] = 0
+            period_metric[year + "/3"] = 0
+            period_metric[year + "/4"] = 0
+        elif period_group == "MES":
+            for m in range(1, 13):
+                period_metric[year + "/" + str(m).zfill(2)] = 0
+        elif period_group == "QUINZENA":
+            for m in range(1, 13):
+                period_metric[year + "/" + str(m).zfill(2) + "/1"] = 0
+                period_metric[year + "/" + str(m).zfill(2) + "/2"] = 0
+        elif period_group == "SEMANA":
+            for m in range(1, 13):
+                period_metric[year + "/" + str(m).zfill(2) + "/1"] = 0
+                period_metric[year + "/" + str(m).zfill(2) + "/2"] = 0
+                period_metric[year + "/" + str(m).zfill(2) + "/3"] = 0
+                period_metric[year + "/" + str(m).zfill(2) + "/4"] = 0
+    return period_metric
+
+
+
+
+
+async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: List[ExpandableFullMetricsContext]) -> ResultantMetrics:
+    mdb = getBotMongoDB()
+    res: ResultantMetrics = ResultantMetrics()
+    res.context = query.context
+    for econtext in expandableContexts:
+        if econtext.context.infraElementIds is not None and query.context.infraElementIds is not None:
+            raise Exception("Elementos de infraestrutura ou endereços definidos tanto nos contextos expansíveis quanto no contexto específico")
+        if econtext.context.fullProductName is not None and query.context.fullProductName is not None:
+            raise Exception("Produtos definidos tanto nos contextos expansíveis quanto no contexto específico")
+        if econtext.context.eventType is not None and query.context.eventType is not None:
+            raise Exception("Tipo de evento definidos tanto nos contextos expansíveis quanto no contexto específico")
+        if econtext.context.metricName is not None and query.context.metricName is not None:
+            raise Exception("Métrica definida tanto nos contextos expansíveis quanto no contexto específico")
+        if econtext.context.period_group is not None and query.context.period_group is not None:
+            raise Exception("Grupo de períodos definido tanto nos contextos expansíveis quanto no contexto específico")
+
+
+        context: ExpandableFullMetricsContext = ExpandableFullMetricsContext\
+        (
+                context= FullMetricsContext
+                (
+                    infraElementIds=query.context.infraElementIds if econtext.context.infraElementIds is None else econtext.context.infraElementIds,
+                    infraElementOptic=query.context.infraElementOptic if econtext.context.infraElementIds is None else econtext.context.infraElementOptic,
+                    fullProductName=query.context.fullProductName if econtext.context.fullProductName is None else econtext.context.fullProductName,
+                    eventType=query.context.eventType if econtext.context.eventType is None else econtext.context.eventType,
+                    metricName=query.context.metricName if econtext.context.metricName is None else econtext.context.metricName,
+                    period_group=query.context.period_group if econtext.context.period_group is None else econtext.context.period_group,
+                ),
+                maxInfraElementDescendantsExpansion= 0 if econtext.context.infraElementIds is None else econtext.maxInfraElementDescendantsExpansion,
+                minInfraElementDescendantsExpansion= 0 if econtext.context.infraElementIds is None else econtext.minInfraElementDescendantsExpansion,
+                maxProductDescendantsExpansion=0 if econtext.context.fullProductName is None else econtext.maxProductDescendantsExpansion,
+                minProductDescendantsExpansion=0 if econtext.context.fullProductName is None else econtext.minProductDescendantsExpansion,
+                maxEventTypeDescendandsExpansion=0 if econtext.context.eventType is None else econtext.maxEventTypeDescendandsExpansion,
+                minEventTypeDescendandsExpansion=0 if econtext.context.eventType is None else econtext.minEventTypeDescendandsExpansion,
+        )
+
+        elemChildren = await expandDescendants(mdb, context.context.infraElementIds, maxLevel=context.maxInfraElementDescendantsExpansion , minLevel=context.minInfraElementDescendantsExpansion)
+        for eid, ename in elemChildren:
+            startLevelProduct = len(context.context.fullProductName.split("/"))
+            startLevelEvent = len(context.context.eventType.split("/"))
+            q = {
+                    "infraElementIds": eid,
+                    "infraElementOptic": context.context.infraElementOptic,
+                    "fullProductName": {"$regex": "^"+context.context.fullProductName+"/.*"},
+                    "eventType": {"$regex": "^"+context.context.eventType+"/.*"},
+                    "metricName": context.context.metricName,
+                    "period_group": context.context.period_group
+                }
+
+            cursor = mdb.ISPContextMetrics.find(q)
+            cm: Optional[ISPContextMetrics] = None
+            async for dcm in cursor:
+                cm: ISPContextMetrics = ISPContextMetrics(**dcm)
+                cmFullProductNameLis = cm.fullProductName.split("/")[:-1]
+                cmEventTypeLis = cm.eventType.split("/")[:-1]
+                lcmFullProductNameLis = len(cmFullProductNameLis)
+                lcmEventTypeLis = len(cmEventTypeLis)
+
+                if lcmFullProductNameLis >= startLevelProduct + context.minProductDescendantsExpansion and\
+                   lcmFullProductNameLis <= startLevelProduct + context.maxProductDescendantsExpansion and \
+                   lcmEventTypeLis >= startLevelEvent + context.minEventTypeDescendandsExpansion and \
+                   lcmEventTypeLis <= startLevelEvent + context.maxEventTypeDescendandsExpansion:
+
+                    periods_values:Dict[str, float] = getAllPeriodsZeroed(context.context.period_group)
+                    for period, value in cm.period_metric.items():
+                        periods_values[period] = value
+
+                    periods_values_ord: List[Tuple[str, float]] = list(periods_values.items())
+                    periods_values_ord.sort()
+
+                    if res.periods is None:
+                        res.periods = [pv[0] for pv in periods_values_ord]
+
+
+
+                    ccontext: FullMetricsContext = FullMetricsContext\
+                    (
+                        infraElementName=ename,
+                        infraElementIds=cm.infraElementIds if econtext.context.infraElementIds is not None else None,
+                        infraElementOptic=cm.infraElementOptic if econtext.context.infraElementIds is not None else None,
+                        fullProductName=cm.fullProductName if econtext.context.fullProductName is not None else None,
+                        eventType=cm.eventType if econtext.context.eventType is not None else None,
+                        metricName=cm.metricName if econtext.context.metricName is not None else None,
+                        period_group=cm.period_group if econtext.context.period_group is not None else None
+                    )
+                    if ccontext in res.series:
+                        raise Exception("Contexto duplicado")
+                    res.series[ccontext] = [pv[1] for pv in periods_values_ord]
+
+    return res
+
+def fixNaNs(arr):
+    last = -1
+    for i in range(len(arr)):
+        if not math.isnan(arr[i]):
+            if last != -1:
+                for j in range(last+1,i):
+                    if math.isinf(arr[last]) and math.isinf(arr[i]) and arr[i]!=arr[last]:
+                        if j-last == i-j:
+                            arr[j] = 0
+                        elif j-last < i-j:
+                            arr[j] = arr[last]
+                        else:
+                            arr[j] = arr[i]
+                    else:
+                        arr[j] = (j-last) / (i-last) * arr[last] + (1 - (j-last) / (i-last)) * arr[i]
+            else:
+                for j in range(last + 1, i):
+                    arr[j] = arr[i]
+            last = i
+    if last != -1:
+        for j in range(last + 1, len(arr)):
+            arr[j] = arr[last]
+
+
+def operateUnary(operator:str, left:List[float]):
+    larr = numpy.array(left)
+
+    if operator == "neg":
+        res = - larr
+    elif operator == "accumulate":
+            res = numpy.cumsum(larr)
+    else:
+        raise Exception("Operador desconhecido "+operator)
+
+    lres = res.tolist()
+    return lres
+
+
+
+def operate(operator:str, left:List[float], right:list[float]):
+    larr = numpy.array(left)
+    rarr = numpy.array(right)
+    ll= len(left)
+    lr = len(right)
+    if ll < lr:
+        if lr % ll != 0:
+            raise Exception("Listas de tamanhos inconpatíveis")
+        m = lr / ll
+        larr = numpy.repeat(larr, m)
+    if lr < ll:
+        if ll % lr != 0:
+            raise Exception("Listas de tamanhos inconpatíveis")
+        m = ll / lr
+        rarr = numpy.repeat(rarr, m)
+
+    if operator == "/":
+        res = larr / rarr
+        lres = res.tolist()
+        fixNaNs(lres)
+        return lres
+    elif operator == "*":
+        res = larr * rarr
+        lres = res.tolist()
+        return lres
+    elif operator == "+":
+        res = larr + rarr
+        lres = res.tolist()
+        return lres
+    elif operator == "-":
+        res = larr - rarr
+        lres = res.tolist()
+        return lres
+    else:
+        raise Exception("Operador desconhecido "+operator)
+
+
+async def getContextMetricsBinary(query:MetricsQuery, expandableContexts: List[ExpandableFullMetricsContext]) -> ResultantMetrics:
+    left: ResultantMetrics = await getContextMetrics(query.left, expandableContexts)
+    right: ResultantMetrics = await getContextMetrics(query.right, expandableContexts)
+    res: ResultantMetrics = ResultantMetrics()
+
+    contexts = set()
+    contexts.update(left.series.keys())
+    contexts.update(right.series.keys())
+    for context in contexts:
+        if right.constant is not None:
+            rseries = [right.constant]
+        else:
+            if context not in right.series:
+                period_group: str = context.period_group if context.period_group is not None else right.context.period_group
+                rseries = list(getAllPeriodsZeroed(period_group).values())
+            else:
+                rseries = right.series[context]
+
+        if left.constant is not None:
+            lseries = [left.constant]
+        else:
+            if context not in left.series:
+                    period_group: str = context.period_group if context.period_group is not None else left.context.period_group
+                    lseries = list(getAllPeriodsZeroed(period_group).values())
+            else:
+                lseries = left.series[context]
+
+        series = operate(query.operator, lseries, rseries)
+        res.series[context] = series
+
+    return res
+
+def isBinary(op:str):
+    return op=="/" or op=="*" or op=="+" or op=="-"
+
+async def getContextMetricsUnary(query:MetricsQuery, expandableContexts: List[ExpandableFullMetricsContext]) -> ResultantMetrics:
+    left: ResultantMetrics = await getContextMetrics(query.left, expandableContexts)
+    res: ResultantMetrics = ResultantMetrics()
+
+    contexts = set()
+    contexts.update(left.series.keys())
+    for context in contexts:
+        lseries = left.series[context]
+        series = operateUnary(query.operator, lseries)
+        res.series[context] = series
+
+    return res
+
+
+async def getContextMetrics(query:MetricsQuery, expandableContexts: List[ExpandableFullMetricsContext]=[]) -> ResultantMetrics:
+    if query.operator == "constant":
+         return ResultantMetrics(constant=query.constant)
+    elif query.operator == "primitive":
+        return await getContextMetricsPrimitive(query, expandableContexts)
+    elif isBinary(query.operator):
+        return await getContextMetricsBinary(query, expandableContexts)
+    else:
+        return await getContextMetricsUnary(query, expandableContexts)
+
+
+async def getContextMetricsExpandable(equery:ExpandableMetricsQuery) -> ResultantMetricsFlat:
+    try:
+        r = await getContextMetrics(equery.query, equery.expandableContexts)
+        res: ResultantMetricsFlat = ResultantMetricsFlat(r)
+        return res
+    except Exception as ex:
+        traceback.print_exc()
+        return ResultantMetricsFlat(fail=True, message=str(ex))
 
