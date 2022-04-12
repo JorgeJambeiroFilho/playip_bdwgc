@@ -20,6 +20,8 @@ from playipappcommons.playipchatmongo import getBotMongoDB
 from playipappcommons.util.LRUCache import LRUCache
 from playipappcommons.analytics.analyticsmodels import *
 
+DRY = False
+
 productLevels = 4
 eventLevels = 2
 
@@ -54,7 +56,7 @@ class LRUCacheAnalytics(LRUCache):
         icm = await self.mdb.ISPContextMetrics.find_one \
            (
                 {
-                    "infraElementIds": key[0],
+                    "infraElementId": key[0],
                     "infraElementOptic": key[1],
                     "fullProductName": key[2],
                     "eventType": key[3],
@@ -65,7 +67,7 @@ class LRUCacheAnalytics(LRUCache):
         if icm is None:
             icm = ISPContextMetrics \
                  (
-                    infraElementIds=key[0],
+                    infraElementId=key[0],
                     infraElementOptic=key[1],
                     fullProductName=key[2],
                     eventType=key[3],
@@ -82,7 +84,8 @@ class LRUCacheAnalytics(LRUCache):
         icm = cast(ISPContextMetrics, obj)
         icmDict = icm.dict(by_alias=True)
         self.res.num_updates += 1
-        await self.mdb.ISPContextMetrics.replace_one({"_id": icm.id}, icmDict, upsert=True)
+        if not DRY:
+            await self.mdb.ISPContextMetrics.replace_one({"_id": icm.id}, icmDict, upsert=True)
         print(self.res)
 
     async def getByIV(self, iv: ISPEvent) -> ISPContextMetrics:
@@ -100,7 +103,7 @@ async def count_events(idv: ISPDateEvent, cache: LRUCacheAnalytics):
     for period_group, period in periods.items():
         iv: ISPEvent = ISPEvent\
             (
-                infraElementIds=idv.infraElementId,
+                infraElementId=idv.infraElementId,
                 infraElementOptic=idv.infraElementOptic,
                 fullProductName=idv.fullProductName,
                 period_group=period_group,
@@ -118,27 +121,40 @@ class SemDataDEInicioException(Exception):
 class SemDownloadException(Exception):
     pass
 
-
 async def count_events_contract(cdata: ContractAnalyticData, cache: LRUCacheAnalytics):
+    for endIndex in range(len(cdata.enderecos)):
+        endereco = cdata.enderecos[endIndex]
+        if endereco.uf is None or endereco.cidade is None or endereco.bairro is None or endereco.logradouro is None:
+            continue
+        await count_events_contract_endfixed(cdata, endIndex, cache)
+
+def lengthOfCommonPrefix(lis1,lis2):
+    p = 0
+    while (p < len(lis1) and p<len(lis2) and lis1[p]==lis2[p]):
+            p += 1
+    return p
+
+async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:int, cache: LRUCacheAnalytics):
 
     if cache.res.num_processed==9696:
         print("Count_events_contract break")
 
     try:
 
-        element: Optional[InfraElement] = await findAddress(cache.mdb, cdata.endereco)
+        element: Optional[InfraElement] = await findAddress(cache.mdb, cdata.enderecos[endIndex])
         if element is None:
+            element: Optional[InfraElement] = await findAddress(cache.mdb, cdata.enderecos[endIndex])
             cache.res.num_enderecos_nao_reconhecidos += 1
             return
 
         contexts: List[(str, str)] = []
 
-        addressHier = await getInfraElementAddressHier(element.id)
-        addressHier = addressHier[0:1] + addressHier[2:-2] # elimina mídia (cabo / radio) e elementos menores
-        addressHier = [str(x) for x in addressHier]
-        for i in range(len(addressHier)):
-            ids = str(addressHier[i]) #"/".join(addressHier[:i])
-            contexts.append((ids,"address"))
+        # addressHier = await getInfraElementAddressHier(element.id)
+        # addressHier = addressHier[0:1] + addressHier[2:-2] # elimina mídia (cabo / radio) e elementos menores
+        # addressHier = [str(x) for x in addressHier]
+        # for i in range(len(addressHier)):
+        #     ids = str(addressHier[i]) #"/".join(addressHier[:i])
+        #     contexts.append((ids,"address"))
 
         structuralHier = await getInfraElementStructuralHier(element.id)
         structuralHier = structuralHier[:-2] # elimina elementos menores
@@ -155,13 +171,13 @@ async def count_events_contract(cdata: ContractAnalyticData, cache: LRUCacheAnal
             if cdata.DT_INICIO:
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="Inicio/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
                 )
                 idvs.append(idv)
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="ContratosValidos/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
                 )
                 idvs.append(idv)
@@ -171,13 +187,13 @@ async def count_events_contract(cdata: ContractAnalyticData, cache: LRUCacheAnal
             if cdata.DT_FIM:
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="Fim/", metricName="Contagem", metricValue=1, dt=cdata.DT_FIM
                 )
                 idvs.append(idv)
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="ContratosValidos/", metricName="Contagem", metricValue=-1, dt=cdata.DT_FIM
                 )
                 idvs.append(idv)
@@ -186,20 +202,20 @@ async def count_events_contract(cdata: ContractAnalyticData, cache: LRUCacheAnal
             if cdata.DT_ATIVACAO:
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="Instalacao/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
                 )
                 idvs.append(idv)
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="ContratosAtivos/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
                 )
                 idvs.append(idv)
             else:
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="ContratoSemInstalacao/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
                 )
                 idvs.append(idv)
@@ -209,13 +225,13 @@ async def count_events_contract(cdata: ContractAnalyticData, cache: LRUCacheAnal
             if cdata.DT_CANCELAMENTO:
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="Cancelamento/", metricName="Contagem", metricValue=1, dt=cdata.DT_CANCELAMENTO
                 )
                 idvs.append(idv)
                 idv: ISPDateEvent = ISPDateEvent\
                 (
-                    infraElementIds=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="ContratosAtivos/", metricName="Contagem", metricValue=-1, dt=cdata.DT_CANCELAMENTO
                 )
                 idvs.append(idv)
@@ -230,6 +246,26 @@ async def count_events_contract(cdata: ContractAnalyticData, cache: LRUCacheAnal
                     sidvs: List[ISPDateEvent] = []
                     sp: ServicePackAnalyticData = cdata.services[i_sp]
                     fullPackNameList = sp.fullName.split("/")
+                    priorSP: ServicePackAnalyticData = None
+                    priorFullPackNameList = []
+                    lenCommonProdNameWithPrior = 0
+                    if i_sp > 0:
+                        priorSP: ServicePackAnalyticData = cdata.services[i_sp-1]
+                        priorFullPackNameList = priorSP.fullName.split("/")
+                        lenCommonProdNameWithPrior = lengthOfCommonPrefix(priorFullPackNameList, fullPackNameList)
+
+                    postSP: ServicePackAnalyticData = None
+                    postFullPackNameList = []
+                    lenCommonProdNameWithPost = 0
+                    if i_sp < len(cdata.services)-1:
+                        postSP: ServicePackAnalyticData = cdata.services[i_sp+1]
+                        postFullPackNameList = postSP.fullName.split("/")
+                        lenCommonProdNameWithPost = lengthOfCommonPrefix(postFullPackNameList, fullPackNameList)
+
+
+
+
+
                     for context in contexts:
                         for pnivel in range(len(fullPackNameList)):
                             sl = "/".join((fullPackNameList[:pnivel + 1]))+"/"
@@ -237,51 +273,58 @@ async def count_events_contract(cdata: ContractAnalyticData, cache: LRUCacheAnal
                             #print("scontext", scontext)
                             if sp.DT_ATIVACAO:
                                 if i_sp == 0:
-                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="ContratatacaoPacote/", metricName="Contagem",metricValue=1, dt=sp.DT_ATIVACAO)
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="ContratatacaoPacote/", metricName="Contagem",metricValue=1, dt=sp.DT_ATIVACAO)
                                     sidvs.append(idv)
                                 else:
-                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoEntradaPacote/", metricName="Contagem", metricValue=1, dt=sp.DT_ATIVACAO)
-                                    idvs.append(idv)
+                                    if lenCommonProdNameWithPrior <= pnivel:
+                                        idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoEntradaPacote/", metricName="Contagem", metricValue=1, dt=sp.DT_ATIVACAO)
+                                        idvs.append(idv)
 
-                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Contagem", metricValue=1, dt=sp.DT_ATIVACAO)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Contagem", metricValue=1, dt=sp.DT_ATIVACAO)
                                 sidvs.append(idv)
-                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Valor", metricValue=sp.VL_SERVICO, dt=sp.DT_ATIVACAO)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Valor", metricValue=sp.VL_SERVICO, dt=sp.DT_ATIVACAO)
                                 sidvs.append(idv)
                                 if sp.download_speed is None:
                                     raise SemDownloadException()
-                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=sp.download_speed, dt=sp.DT_ATIVACAO)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=sp.download_speed, dt=sp.DT_ATIVACAO)
                                 sidvs.append(idv)
-                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=sp.upload_speed, dt=sp.DT_ATIVACAO)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=sp.upload_speed, dt=sp.DT_ATIVACAO)
                                 sidvs.append(idv)
                             else:
                                 if i_sp == 0:
-                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="ContratatacaoPacoteNuncaAtivado/", metricName="Contagem",metricValue=1, dt=sp.DT_CADASTRO)
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="ContratatacaoPacoteNuncaAtivado/", metricName="Contagem",metricValue=1, dt=sp.DT_CADASTRO)
                                     sidvs.append(idv)
                                 else:
-                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoEntradaPacoteNuncaAtivado/", metricName="Contagem", metricValue=1, dt=sp.DT_CADASTRO)
-                                    idvs.append(idv)
+                                    if lenCommonProdNameWithPrior <= pnivel:
+                                        idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoEntradaPacoteNuncaAtivado/", metricName="Contagem", metricValue=1, dt=sp.DT_CADASTRO)
+                                        idvs.append(idv)
 
+                            if not sp.DT_DESATIVACAO and cdata.DT_CANCELAMENTO and i_sp == len(cdata.services)-1:
+                                sp.DT_DESATIVACAO = cdata.DT_CANCELAMENTO;
 
                             if sp.DT_DESATIVACAO:
                                 if i_sp == len(cdata.services)-1:
-                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="CancelamentoPacote/", metricName="Contagem",metricValue=1, dt=sp.DT_DESATIVACAO)
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="CancelamentoPacote/", metricName="Contagem",metricValue=1, dt=sp.DT_DESATIVACAO)
                                     sidvs.append(idv)
-                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="CancelamentoPacote/"+sp.TX_MOTIVO_CANCELAMENTO+"/", metricName="Contagem", metricValue=1, dt=sp.DT_DESATIVACAO)
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="CancelamentoPacote/"+sp.TX_MOTIVO_CANCELAMENTO+"/", metricName="Contagem", metricValue=1, dt=sp.DT_DESATIVACAO)
                                     sidvs.append(idv)
                                 else:
-                                    idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoSaidaPacote/", metricName="Contagem", metricValue=1, dt=sp.DT_DESATIVACAO)
-                                    sidvs.append(idv)
+                                    if lenCommonProdNameWithPost <= pnivel:
+                                        idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoSaidaPacote/", metricName="Contagem", metricValue=1, dt=sp.DT_DESATIVACAO)
+                                        sidvs.append(idv)
 
-                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Contagem", metricValue=-1, dt=sp.DT_DESATIVACAO)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Contagem", metricValue=-1, dt=sp.DT_DESATIVACAO)
                                 sidvs.append(idv)
-                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Valor", metricValue=-sp.VL_SERVICO, dt=sp.DT_DESATIVACAO)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Valor", metricValue=-sp.VL_SERVICO, dt=sp.DT_DESATIVACAO)
                                 sidvs.append(idv)
                                 if sp.download_speed is None:
                                     raise SemDownloadException()
-                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=-sp.download_speed, dt=sp.DT_DESATIVACAO)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=-sp.download_speed, dt=sp.DT_DESATIVACAO)
                                 sidvs.append(idv)
-                                idv: ISPDateEvent = ISPDateEvent(infraElementIds=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=-sp.upload_speed, dt=sp.DT_DESATIVACAO)
+                                idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=-sp.upload_speed, dt=sp.DT_DESATIVACAO)
                                 sidvs.append(idv)
+
+
 
                     idvs.extend(sidvs)
 
@@ -330,12 +373,13 @@ async def count_events_contracts_raw(it: AsyncGenerator[ServicePackAndContractAn
     try:
         mdb = getBotMongoDB()
         cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, res, 10000)
-        await mdb.ISPContextMetrics.delete_many({})
+        if not DRY:
+            await mdb.ISPContextMetrics.delete_many({})
         last_contract: Optional[ContractAnalyticData] = None
         async for spc in it:
-            endereco = spc.contract.endereco
-            if endereco.uf is None or endereco.cidade is None or endereco.bairro is None or endereco.logradouro is None:
-                continue
+            # endereco = spc.contract.endereco
+            # if endereco.uf is None or endereco.cidade is None or endereco.bairro is None or endereco.logradouro is None:
+            #     continue
 
             # element: Optional[InfraElement] = await findAddress(mdb, endereco)
             # if element is None:
@@ -370,7 +414,7 @@ async def count_events_contracts_raw(it: AsyncGenerator[ServicePackAndContractAn
 
 
 def getAllPeriodsZeroed(period_group) -> Dict[str, float]:
-    firstYear = 2008
+    firstYear = 2011
     lastYear = datetime.now().year
     period_metric: Dict[str, float] = {}
     for y in range(firstYear, lastYear+1):
@@ -423,7 +467,7 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
         (
                 context= FullMetricsContext
                 (
-                    infraElementIds=query.context.infraElementId if econtext.context.infraElementId is None else econtext.context.infraElementId,
+                    infraElementId=query.context.infraElementId if econtext.context.infraElementId is None else econtext.context.infraElementId,
                     infraElementOptic=query.context.infraElementOptic if econtext.context.infraElementId is None else econtext.context.infraElementOptic,
                     fullProductName=query.context.fullProductName if econtext.context.fullProductName is None else econtext.context.fullProductName,
                     eventType=query.context.eventType if econtext.context.eventType is None else econtext.context.eventType,
@@ -438,12 +482,20 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
                 minEventTypeDescendandsExpansion=0 if econtext.context.eventType is None else econtext.minEventTypeDescendandsExpansion,
         )
 
+        if\
+        (
+                context.context.infraElementId is None or context.context.infraElementOptic is None or\
+                context.context.fullProductName is None or context.context.eventType is None or\
+                context.context.metricName is None or context.context.period_group is None
+        ):
+            continue
+
         elemChildren = await expandDescendants(mdb, context.context.infraElementId, maxLevel=context.maxInfraElementDescendantsExpansion, minLevel=context.minInfraElementDescendantsExpansion)
         for eid, ename in elemChildren:
             startLevelProduct = len(context.context.fullProductName.split("/"))
             startLevelEvent = len(context.context.eventType.split("/"))
             q = {
-                    "infraElementIds": eid,
+                    "infraElementId": eid,
                     "infraElementOptic": context.context.infraElementOptic,
                     "fullProductName": {"$regex": "^"+context.context.fullProductName+"/.*"},
                     "eventType": {"$regex": "^"+context.context.eventType+"/.*"},
@@ -480,7 +532,7 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
                     ccontext: FullMetricsContext = FullMetricsContext\
                     (
                         infraElementName=ename,
-                        infraElementIds=cm.infraElementId if econtext.context.infraElementId is not None else None,
+                        infraElementId=cm.infraElementId if econtext.context.infraElementId is not None else None,
                         infraElementOptic=cm.infraElementOptic if econtext.context.infraElementId is not None else None,
                         fullProductName=cm.fullProductName if econtext.context.fullProductName is not None else None,
                         eventType=cm.eventType if econtext.context.eventType is not None else None,
@@ -632,9 +684,61 @@ async def getContextMetrics(query:MetricsQuery, expandableContexts: List[Expanda
 async def getContextMetricsExpandable(equery:ExpandableMetricsQuery) -> ResultantMetricsFlat:
     try:
         r = await getContextMetrics(equery.query, equery.expandableContexts)
-        res: ResultantMetricsFlat = ResultantMetricsFlat(r)
+        res: ResultantMetricsFlat = ResultantMetricsFlat(queryKey=equery.queryKey, rm=r)
         return res
     except Exception as ex:
         traceback.print_exc()
-        return ResultantMetricsFlat(fail=True, message=str(ex))
+        return ResultantMetricsFlat(queryKey=equery.queryKey, fail=True, message=str(ex))
+
+
+async def getAnalyticsReportList() -> List[AnalyticsReportSpecification]:
+    mdb = getBotMongoDB()
+    res: List[AnalyticsReportSpecification] = []
+    cursor = mdb.AnalyticsReports.find({}, {"_id": True, "name": True})
+    async for row in cursor:
+        rs = AnalyticsReportSpecification(reportId=str(row["_id"]), reportName=row["name"])
+        res.append(rs)
+
+    return res
+
+async def getAnalyticsReport(id:str) -> AnalyticsReport:
+    mdb = getBotMongoDB()
+    dres = await mdb.AnalyticsReports.find_one({"_id":ObjectId(id)})
+    res = AnalyticsReport(**dres)
+    return res
+
+async def setAnalyticsReport(report: AnalyticsReport) -> AnalyticsReportSetResult:
+    mdb = getBotMongoDB()
+    rdic = report.dict(by_alias=True)
+    await mdb.AnalyticsReports.replace_one({"_id": report.id}, rdic, upsert=True)
+    return AnalyticsReportSetResult(fail=False, message="Ok")
+
+async def createAnalyticsReport() -> AnalyticsReport:
+    mdb = getBotMongoDB()
+    report: AnalyticsReport = AnalyticsReport()
+    rdic = report.dict(by_alias=True)
+    await mdb.AnalyticsReports.insert_one(rdic)
+    return report
+
+async def getFullProductNames() -> List[str]:
+    mdb = getBotMongoDB()
+    res: List[str] = await mdb.ISPContextMetrics.distinct("fullProductName", {})
+    res = [prod[:-1] for prod in res]
+    return res
+
+async def getEventTypes() -> List[str]:
+    mdb = getBotMongoDB()
+    res: List[str] = await mdb.ISPContextMetrics.distinct("eventType", {})
+    res = [event[:-1] for event in res]
+    return res
+
+async def getPeriodGroups() -> List[str]:
+    mdb = getBotMongoDB()
+    res: List[str] = await mdb.ISPContextMetrics.distinct("period_group", {})
+    return res
+
+async def getMetricNames() -> List[str]:
+    mdb = getBotMongoDB()
+    res: List[str] = await mdb.ISPContextMetrics.distinct("metricName", {})
+    return res
 
