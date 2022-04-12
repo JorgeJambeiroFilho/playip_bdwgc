@@ -86,7 +86,7 @@ class LRUCacheAnalytics(LRUCache):
         print(self.res)
 
     async def getByIV(self, iv: ISPEvent) -> ISPContextMetrics:
-        key = (iv.infraElementIds, iv.infraElementOptic, iv.fullProductName, iv.eventType, iv.metricName, iv.period_group)
+        key = (iv.infraElementId, iv.infraElementOptic, iv.fullProductName, iv.eventType, iv.metricName, iv.period_group)
         return await self.get(key)
 
 async def count_event(iv: ISPEvent, cache: LRUCacheAnalytics):
@@ -100,7 +100,7 @@ async def count_events(idv: ISPDateEvent, cache: LRUCacheAnalytics):
     for period_group, period in periods.items():
         iv: ISPEvent = ISPEvent\
             (
-                infraElementIds=idv.infraElementIds,
+                infraElementIds=idv.infraElementId,
                 infraElementOptic=idv.infraElementOptic,
                 fullProductName=idv.fullProductName,
                 period_group=period_group,
@@ -407,7 +407,7 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
     res: ResultantMetrics = ResultantMetrics()
     res.context = query.context
     for econtext in expandableContexts:
-        if econtext.context.infraElementIds is not None and query.context.infraElementIds is not None:
+        if econtext.context.infraElementId is not None and query.context.infraElementId is not None:
             raise Exception("Elementos de infraestrutura ou endereços definidos tanto nos contextos expansíveis quanto no contexto específico")
         if econtext.context.fullProductName is not None and query.context.fullProductName is not None:
             raise Exception("Produtos definidos tanto nos contextos expansíveis quanto no contexto específico")
@@ -423,22 +423,22 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
         (
                 context= FullMetricsContext
                 (
-                    infraElementIds=query.context.infraElementIds if econtext.context.infraElementIds is None else econtext.context.infraElementIds,
-                    infraElementOptic=query.context.infraElementOptic if econtext.context.infraElementIds is None else econtext.context.infraElementOptic,
+                    infraElementIds=query.context.infraElementId if econtext.context.infraElementId is None else econtext.context.infraElementId,
+                    infraElementOptic=query.context.infraElementOptic if econtext.context.infraElementId is None else econtext.context.infraElementOptic,
                     fullProductName=query.context.fullProductName if econtext.context.fullProductName is None else econtext.context.fullProductName,
                     eventType=query.context.eventType if econtext.context.eventType is None else econtext.context.eventType,
                     metricName=query.context.metricName if econtext.context.metricName is None else econtext.context.metricName,
                     period_group=query.context.period_group if econtext.context.period_group is None else econtext.context.period_group,
                 ),
-                maxInfraElementDescendantsExpansion= 0 if econtext.context.infraElementIds is None else econtext.maxInfraElementDescendantsExpansion,
-                minInfraElementDescendantsExpansion= 0 if econtext.context.infraElementIds is None else econtext.minInfraElementDescendantsExpansion,
+                maxInfraElementDescendantsExpansion= 0 if econtext.context.infraElementId is None else econtext.maxInfraElementDescendantsExpansion,
+                minInfraElementDescendantsExpansion= 0 if econtext.context.infraElementId is None else econtext.minInfraElementDescendantsExpansion,
                 maxProductDescendantsExpansion=0 if econtext.context.fullProductName is None else econtext.maxProductDescendantsExpansion,
                 minProductDescendantsExpansion=0 if econtext.context.fullProductName is None else econtext.minProductDescendantsExpansion,
                 maxEventTypeDescendandsExpansion=0 if econtext.context.eventType is None else econtext.maxEventTypeDescendandsExpansion,
                 minEventTypeDescendandsExpansion=0 if econtext.context.eventType is None else econtext.minEventTypeDescendandsExpansion,
         )
 
-        elemChildren = await expandDescendants(mdb, context.context.infraElementIds, maxLevel=context.maxInfraElementDescendantsExpansion , minLevel=context.minInfraElementDescendantsExpansion)
+        elemChildren = await expandDescendants(mdb, context.context.infraElementId, maxLevel=context.maxInfraElementDescendantsExpansion, minLevel=context.minInfraElementDescendantsExpansion)
         for eid, ename in elemChildren:
             startLevelProduct = len(context.context.fullProductName.split("/"))
             startLevelEvent = len(context.context.eventType.split("/"))
@@ -480,8 +480,8 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
                     ccontext: FullMetricsContext = FullMetricsContext\
                     (
                         infraElementName=ename,
-                        infraElementIds=cm.infraElementIds if econtext.context.infraElementIds is not None else None,
-                        infraElementOptic=cm.infraElementOptic if econtext.context.infraElementIds is not None else None,
+                        infraElementIds=cm.infraElementId if econtext.context.infraElementId is not None else None,
+                        infraElementOptic=cm.infraElementOptic if econtext.context.infraElementId is not None else None,
                         fullProductName=cm.fullProductName if econtext.context.fullProductName is not None else None,
                         eventType=cm.eventType if econtext.context.eventType is not None else None,
                         metricName=cm.metricName if econtext.context.metricName is not None else None,

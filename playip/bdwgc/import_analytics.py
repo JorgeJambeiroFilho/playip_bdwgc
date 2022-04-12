@@ -130,36 +130,36 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
                     logradouro=row.logradouro, numero=row.num, complemento=row.complemento, bairro=row.bairro, cep=row.cep,
                     condominio=row.condominio, cidade=row.cidade, uf=row.id_uf, prefix="Comercial"
             )
-            for endereco in [enderecoInfra, enderecoComercial]:
-                contract: ContractAnalyticData = ContractAnalyticData\
-                (
-                    id_contract=row.ID_CONTRATO,
-                    DT_ATIVACAO=row.CONTRATO_DT_ATIVACAO,
-                    DT_CANCELAMENTO=row.CONTRATO_DT_CANCELAMENTO,
-                    DT_INICIO=row.CONTRATO_DT_INICIO,
-                    DT_FIM=row.CONTRATO_DT_FIM,
-                    endereco=endereco
-                )
-                service: ServicePackAnalyticData = ServicePackAnalyticData\
-                (
-                    fullName = row.NM_PROD + "/" + row.NM_MEIO + "/" + row.NM_TEC + "/" + row.NM_PACOTE_SERVICO, #+ "/",
-                    DT_ATIVACAO=row.SERVICO_DT_ATIVACAO,
-                    DT_DESATIVACAO=row.SERVICO_DT_DESATIVACAO,
-                    DT_DESISTENCIA=row.SERVICO_DT_DESISTENCIA,
-                    DT_CADASTRO=row.SERVICO_DT_CADASTRO,
-                    TX_MOTIVO_CANCELAMENTO=row.SERVICO_TX_MOTIVO_CANCELAMENTO,
-                    VL_SERVICO=row.VL_PACOTE, # só há um serviço, relevante,então posso jogar o preço do pacote todod nele para fins estatísticos
-                    download_speed=row.VL_DOWNLOAD,
-                    upload_speed=row.VL_UPLOAD,
-                    VL_PACOTE=row.VL_PACOTE
-                )
-                spc: ServicePackAndContractAnalyticData = ServicePackAndContractAnalyticData(contract=contract,service=service)
-                # try:
-                #     spc: ServicePackAndContractAnalyticData = ServicePackAndContractAnalyticData(contract=contract, service=service)
-                # except:
-                #     res.num_fails += 1
-                # res.num_processed += 1
-                yield spc
+            #for endereco in [enderecoInfra, enderecoComercial]:
+            contract: ContractAnalyticData = ContractAnalyticData\
+            (
+                id_contract=row.ID_CONTRATO,
+                DT_ATIVACAO=row.CONTRATO_DT_ATIVACAO,
+                DT_CANCELAMENTO=row.CONTRATO_DT_CANCELAMENTO,
+                DT_INICIO=row.CONTRATO_DT_INICIO,
+                DT_FIM=row.CONTRATO_DT_FIM,
+                endereco=[enderecoComercial]
+            )
+            service: ServicePackAnalyticData = ServicePackAnalyticData\
+            (
+                fullName = row.NM_PROD + "/" + row.NM_MEIO + "/" + row.NM_TEC + "/" + row.NM_PACOTE_SERVICO, #+ "/",
+                DT_ATIVACAO=row.SERVICO_DT_ATIVACAO,
+                DT_DESATIVACAO=row.SERVICO_DT_DESATIVACAO,
+                DT_DESISTENCIA=row.SERVICO_DT_DESISTENCIA,
+                DT_CADASTRO=row.SERVICO_DT_CADASTRO,
+                TX_MOTIVO_CANCELAMENTO=row.SERVICO_TX_MOTIVO_CANCELAMENTO,
+                VL_SERVICO=row.VL_PACOTE, # só há um serviço, relevante,então posso jogar o preço do pacote todod nele para fins estatísticos
+                download_speed=row.VL_DOWNLOAD,
+                upload_speed=row.VL_UPLOAD,
+                VL_PACOTE=row.VL_PACOTE
+            )
+            spc: ServicePackAndContractAnalyticData = ServicePackAndContractAnalyticData(contract=contract,service=service)
+            # try:
+            #     spc: ServicePackAndContractAnalyticData = ServicePackAndContractAnalyticData(contract=contract, service=service)
+            # except:
+            #     res.num_fails += 1
+            # res.num_processed += 1
+            yield spc
 
 
 
