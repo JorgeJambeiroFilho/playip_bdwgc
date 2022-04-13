@@ -117,7 +117,9 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
 
             row = ObjRow()
             for h, v in zip(headers, rrow):
-                if isinstance(v, datetime.datetime):
+                if v is None:
+                    pass
+                elif isinstance(v, datetime.datetime):
                     v = v.timestamp()
                 elif isinstance(v, datetime.date):
                     v = datetime.datetime(v.year, v.month, v.day)

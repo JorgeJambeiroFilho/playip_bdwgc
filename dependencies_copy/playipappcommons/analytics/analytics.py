@@ -20,7 +20,7 @@ from playipappcommons.playipchatmongo import getBotMongoDB
 from playipappcommons.util.LRUCache import LRUCache
 from playipappcommons.analytics.analyticsmodels import *
 
-DRY = False
+DRY = True
 
 productLevels = 4
 eventLevels = 2
