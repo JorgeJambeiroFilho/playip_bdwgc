@@ -15,7 +15,7 @@ importrouter = APIRouter(prefix="/playipispbd/import")
 def cf(s):
     if s is None:
         return None
-    r = s.strip()#.strip("'").strip()
+    r = s.strip().replace("/","-")
     return r
 
 
@@ -83,7 +83,7 @@ async def importAddressesIntern() -> ImportAddressResult:
             condominio: Optional[str] = cf(row[4])
             cidade: Optional[str] = cf(row[7])
             uf: Optional[str] = cf(row[8])
-            is_radio = row[10] == "radio"  # a outra opção no wgc é "fibra"
+            is_radio = row[10] == cf("radio")  # a outra opção no wgc é "fibra"
             medianetwork = "Rádio" if is_radio else "Cabo"
 
             endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf, prefix="Infraestrutura-"+medianetwork)

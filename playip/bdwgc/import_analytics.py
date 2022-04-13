@@ -13,6 +13,12 @@ importanalyticsrouter = APIRouter(prefix="/playipispbd/importanalytics")
 
 onGoingImportAnalyticDataResult: ImportAnalyticDataResult = None
 
+def cf(s):
+    if s is None:
+        return None
+    r = s.strip().replace("/","-")
+    return r
+
 @importanalyticsrouter.get("/importanalytics", response_model=ImportAnalyticDataResult)
 async def importAnalytics() -> ImportAnalyticDataResult:
     global onGoingImportAnalyticDataResult
@@ -116,6 +122,8 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
                 elif isinstance(v, datetime.date):
                     v = datetime.datetime(v.year, v.month, v.day)
                     v = v.timestamp()
+                elif isinstance(v, str):
+                    v = cf(v)
                 row.__setattr__(h, v)
 
             is_radio = row.NM_MEIO == "radio"  # a outra opção no wgc é "fibra"
