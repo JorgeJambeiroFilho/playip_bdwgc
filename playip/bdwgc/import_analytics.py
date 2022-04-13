@@ -147,7 +147,7 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
                 DT_CANCELAMENTO=row.CONTRATO_DT_CANCELAMENTO,
                 DT_INICIO=row.CONTRATO_DT_INICIO,
                 DT_FIM=row.CONTRATO_DT_FIM,
-                endereco=[enderecoComercial]
+                enderecos=[enderecoComercial]
             )
             service: ServicePackAnalyticData = ServicePackAnalyticData\
             (
