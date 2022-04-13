@@ -20,7 +20,7 @@ from playipappcommons.playipchatmongo import getBotMongoDB
 from playipappcommons.util.LRUCache import LRUCache
 from playipappcommons.analytics.analyticsmodels import *
 
-DRY = True
+DRY = False
 
 productLevels = 4
 eventLevels = 2
@@ -410,6 +410,7 @@ async def count_events_contracts_raw(it: AsyncGenerator[ServicePackAndContractAn
     finally:
         await it.aclose()
         await cache.close()
+        res.complete = True
         print(res)
 
 
