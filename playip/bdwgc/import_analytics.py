@@ -177,5 +177,13 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
 
 
 async def importAllContratoPacoteServico():
-    it: AsyncGenerator[ServicePackAndContractAnalyticData, None] = getContratoPacoteServicoIterator()
-    await count_events_contracts_raw(it)
+    global onGoingImportAnalyticDataResult
+    if onGoingImportAnalyticDataResult is None:
+        onGoingImportAnalyticDataResult = ImportAnalyticDataResult()
+    res: ImportAnalyticDataResult = onGoingImportAnalyticDataResult
+
+    it: Iterable[ServicePackAndContractAnalyticData] = getContratoPacoteServicoIterator()
+    await count_events_contracts_raw(it, res)
+
+    # it: AsyncGenerator[ServicePackAndContractAnalyticData, None] = getContratoPacoteServicoIterator()
+    # await count_events_contracts_raw(it)
