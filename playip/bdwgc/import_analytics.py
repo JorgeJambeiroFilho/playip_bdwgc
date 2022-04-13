@@ -45,7 +45,6 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
     global onGoingImportAnalyticDataResult
     res: ImportAnalyticDataResult = onGoingImportAnalyticDataResult
 
-
     with wdb.cursor() as cursor:
         cursor.execute("""
             SELECT  
@@ -81,12 +80,8 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
                 ps.NM_PACOTE_SERVICO as NM_PACOTE_SERVICO, 
                 ps.VL_PACOTE as VL_PACOTE,
 
-                Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, 
-                Endereco.TX_CEP as cep, Condominio.NM_CONDOMINIO as condominio, Endereco.TX_BAIRRO as bairro, Cidade.ID_LOCALIDADE as id_cidade, 
-                Cidade.TX_NOME_LOCALIDADE as cidade,UF.ID_UF as id_uf, UF.NM_UF as uf
-
-
-            FROM 
+            FROM
+                         
                 Contrato_PacoteServico_Servico as cps 
                 INNER JOIN Contrato as contrato on (cps.ID_CONTRATO=contrato.ID_CONTRATO)
                 INNER JOIN PacoteServico as ps on (cps.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO) 
@@ -103,8 +98,8 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
                 LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
 
             WHERE
-                tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM'i
-            ORDER BY 
+                tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM'
+            ORDER BY
                 UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
                 SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO
                          """)
