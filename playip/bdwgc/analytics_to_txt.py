@@ -58,9 +58,9 @@ cursor.execute("""
                 INNER JOIN TiposDiversos as ttec on (ttec.ID_TIPO_DIVERSOS=dici.ID_TIPO_TECNOLOGIA) 
                 INNER JOIN TiposDiversos as tprod on (tprod.ID_TIPO_DIVERSOS=dici.ID_TIPO_PRODUTO) 
 
-                INNER JOIN Endereco as Endereco on (Endereco.ID_ENDERECO=Contrato.ID_ENDERECO_INSTALACAO)
+                INNER JOIN Endereco as Endereco on (Endereco.ID_ENDEto.ID_ENDERECO_INSTALACAO)
                 LEFT JOIN LOG_LOCALIDADE as Cidade on (Endereco.ID_CIDADE=Cidade.ID_LOCALIDADE)
-                LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
+                LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=CoRECO=Contrandominio.ID_CONDOMINIO)
                 LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
 
             WHERE

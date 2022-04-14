@@ -491,6 +491,8 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
         ):
             continue
 
+        context.context.infraElementFullName = await getInfraElementFullStructuralName(FAMongoId(context.context.infraElementId))
+
         elemChildren = await expandDescendants(mdb, context.context.infraElementId, maxLevel=context.maxInfraElementDescendantsExpansion, minLevel=context.minInfraElementDescendantsExpansion)
         for eid, ename in elemChildren:
             startLevelProduct = len(context.context.fullProductName.split("/"))
@@ -540,6 +542,8 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
                         metricName=cm.metricName if econtext.context.metricName is not None else None,
                         period_group=cm.period_group if econtext.context.period_group is not None else None
                     )
+                    ccontext.infraElementFullName = await getInfraElementFullStructuralName(FAMongoId(ccontext.infraElementId))
+
                     if ccontext in res.series:
                         raise Exception("Contexto duplicado")
                     res.series[ccontext] = [pv[1] for pv in periods_values_ord]

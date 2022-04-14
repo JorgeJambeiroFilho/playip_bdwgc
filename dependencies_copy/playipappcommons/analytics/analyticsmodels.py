@@ -123,6 +123,7 @@ class ISPDateEvent(pydantic.BaseModel):
 
 class FullMetricsContext(pydantic.BaseModel):
     #infraElementName: Optional[str] = None # esse campo é só para facilitar a depuração. Ele é preenchido quando possível, mas não é usado pelo programa. Note que é ignorado no método __key
+    infraElementFullName: Optional[str] # ajuda o cliente javascript a exibir nome amigáveis, pois o infraElementId é só um código
     infraElementId: Optional[str] # identificadores de região na hierarquia de infraestrutura da raiz até o elemento separado por "/"
     infraElementOptic: Optional[str]
     fullProductName: Optional[str]
