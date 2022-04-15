@@ -542,7 +542,8 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
                         metricName=cm.metricName if econtext.context.metricName is not None else None,
                         period_group=cm.period_group if econtext.context.period_group is not None else None
                     )
-                    ccontext.infraElementFullName = await getInfraElementFullStructuralName(FAMongoId(ccontext.infraElementId))
+                    if ccontext.infraElementId is not None:
+                        ccontext.infraElementFullName = await getInfraElementFullStructuralName(FAMongoId(ccontext.infraElementId))
 
                     if ccontext in res.series:
                         raise Exception("Contexto duplicado")

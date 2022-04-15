@@ -105,7 +105,10 @@ async def getInfraElementFullStructuralName(id:FAMongoId) -> str:
 
     lis: List[str] = []
     while _id:
-        ascendant = InfraElement(**await mdb.infra.find_one({"_id": _id}))
+        infraElementDict = await mdb.infra.find_one({"_id": _id})
+        if infraElementDict is None:
+            raise Exception("EID não encontrado "+str(_id))
+        ascendant = InfraElement(**infraElementDict)
         lis.append(ascendant.name)
         if not ascendant.parentId:
             break

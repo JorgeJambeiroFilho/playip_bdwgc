@@ -242,7 +242,7 @@ class ResultantMetricsFlat(pydantic.BaseModel):
 
 class ISPContextMetrics(pydantic.BaseModel):
     id: Optional[FAMongoId] = Field(alias='_id')
-    # campos que combinados indentificam o registro
+    # campos que combinados identificam o registro
     #context: str
     infraElementId: str # identificadores de região na hierarquia de infraestrutura da raiz até o elemento separado por "/"
     infraElementOptic: str
