@@ -631,6 +631,10 @@ async def getContextMetricsBinary(query:MetricsQuery, expandableContexts: List[E
     left: ResultantMetrics = await getContextMetrics(query.left, expandableContexts)
     right: ResultantMetrics = await getContextMetrics(query.right, expandableContexts)
     res: ResultantMetrics = ResultantMetrics()
+    if len(left.periods) > len(right.periods):
+        res.periods = left.periods
+    else:
+        res.periods = right.periods
 
     contexts = set()
     contexts.update(left.series.keys())
@@ -665,7 +669,7 @@ def isBinary(op:str):
 async def getContextMetricsUnary(query:MetricsQuery, expandableContexts: List[ExpandableFullMetricsContext]) -> ResultantMetrics:
     left: ResultantMetrics = await getContextMetrics(query.left, expandableContexts)
     res: ResultantMetrics = ResultantMetrics()
-
+    res.periods = left.periods
     contexts = set()
     contexts.update(left.series.keys())
     for context in contexts:

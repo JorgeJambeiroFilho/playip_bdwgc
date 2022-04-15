@@ -163,6 +163,11 @@ class MetricsQuery(pydantic.BaseModel):
     left: Optional[MetricsQuery] = None
     right: Optional[MetricsQuery] = None
     context: Optional[FullMetricsContext] = None
+    infraUpLevels: int = -1 # -1 significa que o infraelement dentro do contexto é absoluto.
+                           # De zero para cima via subindo na hierarquia a partir de uma referência
+                           # as consultas sempre chegam ao servidor com infraelements absolutos
+                           # Porém, o servidor gurda consultas para os clientes e esse podem usar
+                           # referências relativas
     # esse contexto tem que ser compatível com todos os expandableContexts da
     # ExpandableMetricsQuery na qual esta MetricsQuery está inserida
     # Só é none se o operador for constante
@@ -178,7 +183,7 @@ class ExpandableMetricsQuery(pydantic.BaseModel):
 MetricsQuery.update_forward_refs()
 
 class UserQuery(MetricsQuery):
-    infraUpLevels: int = 0
+    pass
 
 class ExpandableMetricsSession(pydantic.BaseModel):
     expandableContexts: List[ExpandableFullMetricsContext]
