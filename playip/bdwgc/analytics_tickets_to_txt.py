@@ -44,8 +44,11 @@ cursor.execute("""
 
                 Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, 
                 Endereco.TX_CEP as cep, Condominio.NM_CONDOMINIO as condominio, Endereco.TX_BAIRRO as bairro, Cidade.ID_LOCALIDADE as id_cidade, 
-                Cidade.TX_NOME_LOCALIDADE as cidade,UF.ID_UF as id_uf, UF.NM_UF as uf
+                Cidade.TX_NOME_LOCALIDADE as cidade,UF.ID_UF as id_uf, UF.NM_UF as uf,
 
+                Ticket.DT_ABERTURA as DT_ticketAbertura,
+                Ticket.DT_FECHAMENTO as DT_ticketFechamento,
+                AreaTicket.NM_AREA_TICKET as ticketArea
 
             FROM 
                 Contrato_PacoteServico_Servico as cps 
@@ -63,11 +66,22 @@ cursor.execute("""
                 LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
                 LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
 
+                INNER JOIN Ticket as Ticket on 
+                          (
+                              cps.ID_CONTRATO=Ticket.ID_CONTRATO and 
+                              cps.DT_ATIVACAO<=Ticket.DT_ABERTURA and
+                              (
+                                  cps.DT_DESATIVACAO is null or
+                                  cps.DT_DESATIVACAO > Ticket.DT_ABERTURA
+                              )
+                          )    
+                INNER JOIN AreaTicket as AreaTicket on (Ticket.ID_AREA_TICKET=AreaTicket.ID_AREA_TICKET)
+
             WHERE
                 tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM'
             ORDER BY 
                 UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
-                SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO
+                SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO, Ticket.DT_ABERTURA 
             OFFSET 0 ROWS 
             FETCH FIRST 10 ROWS ONLY;
         """)
