@@ -167,8 +167,8 @@ async def getContratoPacoteServicoTicketIterator() -> AsyncGenerator[ServicePack
             )
             ticket: TicketData = TicketData\
             (
-                DT_ABERTURA=row.ticketAbertura,
-                DT_FECHAMENTO=row.ticketFechamento,
+                DT_ABERTURA=row.DT_ticketAbertura,
+                DT_FECHAMENTO=row.DT_ticketFechamento,
                 NM_AREA_TICKET=row.ticketArea
             )
             spc: ServicePackAndContractAnalyticData = ServicePackAndContractAnalyticData(contract=contract, service=service, ticket=ticket)
