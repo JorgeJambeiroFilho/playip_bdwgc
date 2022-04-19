@@ -12,7 +12,7 @@ from starlette.responses import HTMLResponse
 
 from playip.bdwgc.bdwgc import wgcrouter
 from playip.bdwgc.import_addr import importrouter
-from playip.bdwgc.import_analytics import importanalyticsrouter
+from playip.bdwgc.import_analitics_router import importanalyticsrouter
 
 app = FastAPI()
 

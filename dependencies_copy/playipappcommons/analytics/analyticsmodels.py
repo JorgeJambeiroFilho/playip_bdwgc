@@ -12,6 +12,7 @@ from playipappcommons.infra.endereco import Endereco
 class ImportAnalyticDataResult(pydantic.BaseModel):
     fail: bool = False
     complete: bool = False
+    started: bool = False
     message: str = "ok"
     num_processed: int = 0
     num_fails: int = 0
@@ -46,6 +47,13 @@ class ServicePackAnalyticData(pydantic.BaseModel):
     #NM_PACOTE: str
     VL_PACOTE: float
 
+    tickets: List[TicketData] = []
+
+class TicketData(pydantic.BaseModel):
+    DT_ABERTURA: Optional[float]
+    DT_FECHAMENTO: Optional[float]
+    NM_AREA_TICKET: Optional[str]
+
 
 class ContractAnalyticData(pydantic.BaseModel):
     id_contract: str
@@ -69,6 +77,7 @@ class ContractAnalyticData(pydantic.BaseModel):
 class ServicePackAndContractAnalyticData(pydantic.BaseModel):
     contract: ContractAnalyticData
     service: ServicePackAnalyticData
+    ticket: Optional[TicketData]
 
 class ISPEvent(pydantic.BaseModel):
 

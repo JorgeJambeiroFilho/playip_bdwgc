@@ -16,7 +16,7 @@ from playipappcommons.infra.infraimportmethods import findAddress
 from playipappcommons.infra.inframethods import getInfraElementFullAddressName, getInfraElementFullStructuralName, \
     getInfraElementAddressHier, getInfraElementStructuralHier, expandDescendants
 from playipappcommons.infra.inframodels import InfraElement
-from playipappcommons.playipchatmongo import getBotMongoDB
+from playipappcommons.playipchatmongo import getBotMongoDB, createIndex_analytics
 from playipappcommons.util.LRUCache import LRUCache
 from playipappcommons.analytics.analyticsmodels import *
 
@@ -44,16 +44,19 @@ def dateToPeriods(moment:float) -> Dict[str, str]:
 
 class LRUCacheAnalytics(LRUCache):
 
-    def __init__(self, mdb, res:ImportAnalyticDataResult, *args, **kargs):
+    def __init__(self, mdb, table, res:ImportAnalyticDataResult, *args, **kargs):
         super().__init__(*args, **kargs)
         self.res = res
         self.mdb = mdb
+
+        self.table = table
 
     def registerHit(self):
         self.res.num_cache_hits += 1
 
     async def load(self, key):
-        icm = await self.mdb.ISPContextMetrics.find_one \
+        #icm = None
+        icm = await self.mdb[self.table].find_one \
            (
                 {
                     "infraElementId": key[0],
@@ -84,8 +87,7 @@ class LRUCacheAnalytics(LRUCache):
         icm = cast(ISPContextMetrics, obj)
         icmDict = icm.dict(by_alias=True)
         self.res.num_updates += 1
-        if not DRY:
-            await self.mdb.ISPContextMetrics.replace_one({"_id": icm.id}, icmDict, upsert=True)
+        await self.mdb[self.table].replace_one({"_id": icm.id}, icmDict, upsert=True)
         print(self.res)
 
     async def getByIV(self, iv: ISPEvent) -> ISPContextMetrics:
@@ -135,9 +137,6 @@ def lengthOfCommonPrefix(lis1,lis2):
     return p
 
 async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:int, cache: LRUCacheAnalytics):
-
-    if cache.res.num_processed==9696:
-        print("Count_events_contract break")
 
     try:
 
@@ -262,10 +261,6 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                         postFullPackNameList = postSP.fullName.split("/")
                         lenCommonProdNameWithPost = lengthOfCommonPrefix(postFullPackNameList, fullPackNameList)
 
-
-
-
-
                     for context in contexts:
                         for pnivel in range(len(fullPackNameList)):
                             sl = "/".join((fullPackNameList[:pnivel + 1]))+"/"
@@ -324,6 +319,29 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=-sp.upload_speed, dt=sp.DT_DESATIVACAO)
                                 sidvs.append(idv)
 
+                            for ticket in sp.tickets:
+                                if ticket.DT_ABERTURA:
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="TicketAbertura/", metricName="Contagem",metricValue=1, dt=ticket.DT_ABERTURA)
+                                    sidvs.append(idv)
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Ticket/", metricName="Contagem",metricValue=1, dt=ticket.DT_ABERTURA)
+                                    sidvs.append(idv)
+                                    if ticket.NM_AREA_TICKET:
+                                        idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="TicketAbertura/"+ticket.NM_AREA_TICKET+"/", metricName="Contagem",metricValue=1, dt=ticket.DT_ABERTURA)
+                                        sidvs.append(idv)
+                                        idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Ticket/"+ticket.NM_AREA_TICKET+"/", metricName="Contagem",metricValue=1, dt=ticket.DT_ABERTURA)
+                                        sidvs.append(idv)
+
+                                if ticket.DT_FECHAMENTO:
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="TicketFechamento/", metricName="Contagem",metricValue=1, dt=ticket.DT_FECHAMENTO)
+                                    sidvs.append(idv)
+                                    idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Ticket/", metricName="Contagem",metricValue=-1, dt=ticket.DT_FECHAMENTO)
+                                    sidvs.append(idv)
+                                    if ticket.NM_AREA_TICKET:
+                                        idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="TicketFechamento/"+ticket.NM_AREA_TICKET+"/", metricName="Contagem",metricValue=1, dt=ticket.DT_FECHAMENTO)
+                                        sidvs.append(idv)
+                                        idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Ticket/"+ticket.NM_AREA_TICKET+"/", metricName="Contagem",metricValue=-1, dt=ticket.DT_FECHAMENTO)
+                                        sidvs.append(idv)
+
 
 
                     idvs.extend(sidvs)
@@ -370,11 +388,16 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
 #     return "estrutura/" + "/".join(fullStructuralNameList[:-2])
 
 async def count_events_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalyticData, None], res: ImportAnalyticDataResult):
+    fail = False
+    mdb = getBotMongoDB()
+    dts = datetime.now().strftime("_%Y_%m_%d_%H_%M_%S")
+    print("count_events_contracts_raw")
+    tabname = "ISPContextMetricsImp" + dts
     try:
-        mdb = getBotMongoDB()
-        cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, res, 10000)
-        if not DRY:
-            await mdb.ISPContextMetrics.delete_many({})
+        createIndex_analytics(mdb, tabname)
+        cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, tabname, res, 10000)
+        # if not DRY:
+        #     await mdb.ISPContextMetrics.delete_many({})
         last_contract: Optional[ContractAnalyticData] = None
         async for spc in it:
             # endereco = spc.contract.endereco
@@ -390,27 +413,47 @@ async def count_events_contracts_raw(it: AsyncGenerator[ServicePackAndContractAn
                 if last_contract:
                     if True or res.num_processed >= 9500:
                         await count_events_contract(last_contract, cache)
+                        if res.num_processed % 10 == 0:
+                            await setImportAnalyticDataResult(res)
                         print(res)
                     else:
+                        if res.num_processed % 10 == 0:
+                            await setImportAnalyticDataResult(res)
                         res.num_processed += 1
                         continue
-                    #if res.num_processed > 10000:
+                    #if res.num_processed > 100:
                     #    break
                 last_contract = spc.contract.copy(deep=True)
                 # last_contract.fullStructName = await getFullStructuralName(element)
                 # last_contract.fullAddressName = await getFullAddressName(element)
 
-            last_contract.services.append(spc.service)
+            if spc.ticket is None or\
+               not last_contract.services or\
+               last_contract.services[-1].fullName != spc.service.fullName or\
+               last_contract.services[-1].DT_ATIVACAO != spc.service.DT_ATIVACAO:
+
+                    last_contract.services.append(spc.service.copy(deep=True))
+
+            if spc.ticket:
+                last_contract.services[-1].tickets.append(spc.ticket)
+
         if last_contract:
             await count_events_contract(last_contract, cache)
             print(res)
+            await setImportAnalyticDataResult(res)
+
+
 
     except:
         traceback.print_exc()
+        fail = True
     finally:
         await it.aclose()
         await cache.close()
+        if not fail and not DRY:
+            mdb[tabname].rename("ISPContextMetrics", dropTarget=True)
         res.complete = True
+        await setImportAnalyticDataResult(res)
         print(res)
 
 
@@ -751,4 +794,26 @@ async def getMetricNames() -> List[str]:
     mdb = getBotMongoDB()
     res: List[str] = await mdb.ISPContextMetrics.distinct("metricName", {})
     return res
+
+async def getImportAnalyticDataResult(begin:bool) -> ImportAnalyticDataResult:
+    mdb = getBotMongoDB()
+    resDict = await mdb.control.find_one({"key":"ImportAnalyticDataResult"})
+    if resDict is None:
+        res = ImportAnalyticDataResult()
+        res.complete = True
+    else:
+        res: ImportAnalyticDataResult = ImportAnalyticDataResult(**resDict)
+    if res.complete and begin:
+        res = ImportAnalyticDataResult()
+        resDict = res.dict(by_alias=True)
+        resDict["key"] = "ImportAnalyticDataResult"
+        await mdb.control.replace_one({"key": "ImportAnalyticDataResult"}, resDict, upsert=True)
+
+    return res
+
+async def setImportAnalyticDataResult(adr: ImportAnalyticDataResult):
+    mdb = getBotMongoDB()
+    resDict = adr.dict(by_alias=True)
+    resDict["key"] = "ImportAnalyticDataResult"
+    await mdb.control.replace_one({"key": "ImportAnalyticDataResult"}, resDict, upsert=True)
 

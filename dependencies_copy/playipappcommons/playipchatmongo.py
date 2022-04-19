@@ -73,15 +73,18 @@ def createIndex_UserClients_TimeId(mdb):
     )
     print("Created UserClients indexes if necessary")
 
-def createIndex_analytics(mdb):
-    mdb.UserClients.create_index(
+
+def createIndex_analytics(mdb, anatabname):
+    mdb[anatabname].create_index(
         [
-            ("context", pymongo.ASCENDING),
+            ("infraElementId", pymongo.ASCENDING),
+            ("infraElementOptic", pymongo.ASCENDING),
+            ("fullProductName", pymongo.ASCENDING),
             ("event_type", pymongo.DESCENDING),
             ("metric_name", pymongo.ASCENDING),
             ("period_group", pymongo.ASCENDING),
         ],
-        background=False, name="context_eventtype_metricname_periodgroup"
+        background=False, name="eid_optc_fpn_eventtype_metricname_periodgroup"
     )
     print("Created Analytics indexes if necessary")
 
@@ -95,7 +98,7 @@ def getBotMongoDB():
         createIndex_Infra_Full_Address(playIPChatHelperDB)
         createIndex_ChatHistory_TimeId(playIPChatHelperDB)
         createIndex_UserClients_TimeId(playIPChatHelperDB)
-        createIndex_analytics(playIPChatHelperDB)
+        #createIndex_analytics(playIPChatHelperDB, "ISPContextMetrics")
     return playIPChatHelperDB
 
 def closeBotMongoDb():

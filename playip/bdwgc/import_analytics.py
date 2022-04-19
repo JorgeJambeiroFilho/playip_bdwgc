@@ -6,10 +6,10 @@ from fastapi import APIRouter
 
 from playip.bdwgc.bdwgc import getWDB
 from playipappcommons.analytics.analytics import ContractAnalyticData, ServicePackAnalyticData, \
-    ServicePackAndContractAnalyticData, count_events_contracts_raw, ImportAnalyticDataResult
+    ServicePackAndContractAnalyticData, count_events_contracts_raw, ImportAnalyticDataResult, \
+    getImportAnalyticDataResult, setImportAnalyticDataResult
 from playipappcommons.infra.endereco import Endereco
 
-importanalyticsrouter = APIRouter(prefix="/playipispbd/importanalytics")
 
 onGoingImportAnalyticDataResult: ImportAnalyticDataResult = None
 
@@ -18,22 +18,6 @@ def cf(s):
         return None
     r = s.strip().replace("/","-")
     return r
-
-@importanalyticsrouter.get("/importanalytics", response_model=ImportAnalyticDataResult)
-async def importAnalytics() -> ImportAnalyticDataResult:
-    global onGoingImportAnalyticDataResult
-    if onGoingImportAnalyticDataResult is None or onGoingImportAnalyticDataResult.complete:
-        onGoingImportAnalyticDataResult = ImportAnalyticDataResult()
-        asyncio.create_task(importAllContratoPacoteServico())
-    return onGoingImportAnalyticDataResult
-
-@importanalyticsrouter.get("/getimportanalyticsresult", response_model=ImportAnalyticDataResult)
-async def getImportAnalyticsResult() -> ImportAnalyticDataResult:
-    global onGoingImportAnalyticDataResult
-    if onGoingImportAnalyticDataResult is None:
-        onGoingImportAnalyticDataResult = ImportAnalyticDataResult()
-        onGoingImportAnalyticDataResult.complete = True
-    return onGoingImportAnalyticDataResult
 
 
 class ObjRow:
@@ -176,13 +160,14 @@ async def getContratoPacoteServicoIterator() -> AsyncGenerator[ServicePackAndCon
 
 
 async def importAllContratoPacoteServico():
-    global onGoingImportAnalyticDataResult
-    if onGoingImportAnalyticDataResult is None:
-        onGoingImportAnalyticDataResult = ImportAnalyticDataResult()
-    res: ImportAnalyticDataResult = onGoingImportAnalyticDataResult
+    onGoingImportAnalyticDataResult = await getImportAnalyticDataResult(True)
+    if onGoingImportAnalyticDataResult.started:
+        return;
+    onGoingImportAnalyticDataResult.started = True
+    await setImportAnalyticDataResult(onGoingImportAnalyticDataResult)
 
     it: Iterable[ServicePackAndContractAnalyticData] = getContratoPacoteServicoIterator()
-    await count_events_contracts_raw(it, res)
+    await count_events_contracts_raw(it, onGoingImportAnalyticDataResult)
 
     # it: AsyncGenerator[ServicePackAndContractAnalyticData, None] = getContratoPacoteServicoIterator()
     # await count_events_contracts_raw(it)
