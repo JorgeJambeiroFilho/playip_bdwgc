@@ -68,7 +68,7 @@ async def getContratoPacoteServicoTicketIterator() -> AsyncGenerator[ServicePack
                 
                 Endereco.TX_ENDERECO as logradouro, Endereco.NR_NUMERO as num, Endereco.TX_COMPLEMENTO as complemento, 
                 Endereco.TX_CEP as cep, Condominio.NM_CONDOMINIO as condominio, Endereco.TX_BAIRRO as bairro, Cidade.ID_LOCALIDADE as id_cidade, 
-                Cidade.TX_NOME_LOCALIDADE as cidade,UF.ID_UF as id_uf, UF.NM_UF as uf                
+                Cidade.TX_NOME_LOCALIDADE as cidade,UF.ID_UF as id_uf, UF.NM_UF as uf,                
 
                 Ticket.DT_ABERTURA as DT_ticketAbertura,
                 Ticket.DT_FECHAMENTO as DT_ticketFechamento,
