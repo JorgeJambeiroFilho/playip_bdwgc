@@ -2,8 +2,8 @@ import asyncio
 
 from fastapi import APIRouter
 
-from playip.bddummy.import_analytics import importAllContratoPacoteServico
-from playip.bddummy.import_analytics_tickets import importAllContratoPacoteServicoTicket
+from playip.bdwgc.import_analytics import importAllContratoPacoteServico
+from playip.bdwgc.import_analytics_tickets import importAllContratoPacoteServicoTicket
 from playipappcommons.analytics.analytics import getImportAnalyticDataResult
 from playipappcommons.analytics.analyticsmodels import ImportAnalyticDataResult
 
