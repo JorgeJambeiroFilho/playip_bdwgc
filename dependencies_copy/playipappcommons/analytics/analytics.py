@@ -25,6 +25,38 @@ DRY = False
 productLevels = 4
 eventLevels = 2
 
+dateLimits = None
+
+async def getDateLimits():
+    global dateLimits
+    if dateLimits is None:
+        mdb = getBotMongoDB()
+        cursor = mdb.ISPContextMetrics.aggregate\
+            (
+                [
+                    { '$match': { "eventType" : "Cancelamento/"} },
+                    {'$group': { '_id': {}, 'minDT': { '$min': '$period_metric'}, 'maxDT': { '$max': '$period_metric'}}}
+                ]
+            )
+        dll = await cursor.to_list(length=1)
+        dl = dll[0]
+        dlMax = list(dl["maxDT"].keys())[0]
+
+        cursor = mdb.ISPContextMetrics.aggregate\
+            (
+                [
+                    { '$match': { "eventType" : "Instalacao/"} },
+                    {'$group': { '_id': {}, 'minDT': { '$min': '$period_metric'}, 'maxDT': { '$max': '$period_metric'}}}
+                ]
+            )
+        dll = await cursor.to_list(length=1)
+        dl = dll[0]
+        dlMin = list(dl["minDT"].keys())[0]
+
+
+        dateLimits = [dlMin, dlMax]
+    return dateLimits
+
 
 def dateToPeriods(moment:float) -> Dict[str, str]:
 
@@ -457,7 +489,8 @@ async def count_events_contracts_raw(it: AsyncGenerator[ServicePackAndContractAn
         print(res)
 
 
-def getAllPeriodsZeroed(period_group) -> Dict[str, float]:
+async def getAllPeriodsZeroed(period_group) -> Dict[str, float]:
+    dateLimits = await getDateLimits()
     firstYear = 2011
     lastYear = datetime.now().year
     period_metric: Dict[str, float] = {}
@@ -473,7 +506,9 @@ def getAllPeriodsZeroed(period_group) -> Dict[str, float]:
             period_metric[year + "/4"] = 0
         elif period_group == "MES":
             for m in range(1, 13):
-                period_metric[year + "/" + str(m).zfill(2)] = 0
+                pk = year + "/" + str(m).zfill(2)
+                if pk > dateLimits[0] and pk < dateLimits[1]:
+                    period_metric[pk] = 0
         elif period_group == "QUINZENA":
             for m in range(1, 13):
                 period_metric[year + "/" + str(m).zfill(2) + "/1"] = 0
@@ -492,6 +527,7 @@ def getAllPeriodsZeroed(period_group) -> Dict[str, float]:
 
 async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: List[ExpandableFullMetricsContext]) -> ResultantMetrics:
     mdb = getBotMongoDB()
+    dateLimits = await getDateLimits()
     res: ResultantMetrics = ResultantMetrics()
     res.context = query.context
     for econtext in expandableContexts:
@@ -563,9 +599,10 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
                    lcmEventTypeLis >= startLevelEvent + context.minEventTypeDescendandsExpansion and \
                    lcmEventTypeLis <= startLevelEvent + context.maxEventTypeDescendandsExpansion:
 
-                    periods_values:Dict[str, float] = getAllPeriodsZeroed(context.context.period_group)
+                    periods_values:Dict[str, float] = await getAllPeriodsZeroed(context.context.period_group)
                     for period, value in cm.period_metric.items():
-                        periods_values[period] = value
+                        if period in periods_values: #excluo os periodos incompletos que existem nos extremos
+                            periods_values[period] = value
 
                     periods_values_ord: List[Tuple[str, float]] = list(periods_values.items())
                     periods_values_ord.sort()
@@ -624,6 +661,25 @@ def operateUnary(operator:str, left:List[float]):
         res = - larr
     elif operator == "accumulate":
             res = numpy.cumsum(larr)
+    elif operator == "movingaverage":
+            w = 2
+            res = numpy.convolve(larr, numpy.ones(2*w+1), 'valid') / 5
+            beg = []
+            end = []
+            for t in range(w):
+                bv = 0
+                ev = 0
+                for tt in range(t+w+1):
+                    bv += larr[tt]
+                    ev += larr[-tt-1]
+                bv /= t+w+1
+                ev /= t+w+1
+                beg.append(bv)
+                end.insert(0, ev)
+            begarr = numpy.array(beg)
+            endarr = numpy.array(end)
+
+            res = numpy.concatenate([begarr, res, endarr])
     else:
         raise Exception("Operador desconhecido "+operator)
 
@@ -687,7 +743,7 @@ async def getContextMetricsBinary(query:MetricsQuery, expandableContexts: List[E
         else:
             if context not in right.series:
                 period_group: str = context.period_group if context.period_group is not None else right.context.period_group
-                rseries = list(getAllPeriodsZeroed(period_group).values())
+                rseries = list(await getAllPeriodsZeroed(period_group).values())
             else:
                 rseries = right.series[context]
 
@@ -696,7 +752,7 @@ async def getContextMetricsBinary(query:MetricsQuery, expandableContexts: List[E
         else:
             if context not in left.series:
                     period_group: str = context.period_group if context.period_group is not None else left.context.period_group
-                    lseries = list(getAllPeriodsZeroed(period_group).values())
+                    lseries = list(await getAllPeriodsZeroed(period_group).values())
             else:
                 lseries = left.series[context]
 
