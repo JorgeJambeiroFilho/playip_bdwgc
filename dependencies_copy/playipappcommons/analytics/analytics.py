@@ -597,7 +597,7 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
 def fixNaNs(arr):
     last = -1
     for i in range(len(arr)):
-        if not math.isnan(arr[i]):
+        if not math.isnan(arr[i]) and not math.isinf(arr[i]):
             if last != -1:
                 for j in range(last+1,i):
                     if math.isinf(arr[last]) and math.isinf(arr[i]) and arr[i]!=arr[last]:
@@ -613,9 +613,8 @@ def fixNaNs(arr):
                 for j in range(last + 1, i):
                     arr[j] = arr[i]
             last = i
-    if last != -1:
-        for j in range(last + 1, len(arr)):
-            arr[j] = arr[last]
+    for j in range(last + 1, len(arr)):
+        arr[j] = arr[last] if last != -1 else 0
 
 
 def operateUnary(operator:str, left:List[float]):
@@ -640,12 +639,12 @@ def operate(operator:str, left:List[float], right:list[float]):
     lr = len(right)
     if ll < lr:
         if lr % ll != 0:
-            raise Exception("Listas de tamanhos inconpatíveis")
+            raise Exception("Listas de tamanhos incompatíveis")
         m = lr / ll
         larr = numpy.repeat(larr, m)
     if lr < ll:
         if ll % lr != 0:
-            raise Exception("Listas de tamanhos inconpatíveis")
+            raise Exception("Listas de tamanhos incompatíveis")
         m = ll / lr
         rarr = numpy.repeat(rarr, m)
 
