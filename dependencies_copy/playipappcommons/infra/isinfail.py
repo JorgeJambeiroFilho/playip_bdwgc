@@ -11,7 +11,7 @@ async def isAddressInFail(addressQuery: AddressQuery) -> AddressInFail:
     else:
         endereco = addressQuery.endereco.copy(deep=True)
         endereco.prefix = "Infraestrutura-"+addressQuery.medianetwork
-        return await isInFail(addressQuery.endereco)
+        return await isInFail(endereco)
 
 async def isInFail(endereco: Endereco) -> AddressInFail:
     mdb = getBotMongoDB()
