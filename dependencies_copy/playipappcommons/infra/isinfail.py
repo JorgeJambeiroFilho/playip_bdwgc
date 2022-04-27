@@ -11,14 +11,17 @@ async def isAddressInFail(addressQuery: AddressQuery) -> AddressInFail:
     else:
         endereco = addressQuery.endereco.copy(deep=True)
         endereco.prefix = "Infraestrutura-"+addressQuery.medianetwork
+        print("isAddressInFail "+str(endereco))
         return await isInFail(endereco)
 
 async def isInFail(endereco: Endereco) -> AddressInFail:
     mdb = getBotMongoDB()
     infraElement: InfraElement = await findAddress(mdb, endereco)
     if infraElement is None:
+        print("isAddressInFail not found " + str(endereco))
         return AddressInFail(located=False, inFail= False)
     else:
+        print("isAddressInFail found " + str(endereco))
         res: AddressInFail = await getInfraElementFailState(infraElement.id)
         return res
 
