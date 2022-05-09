@@ -171,6 +171,11 @@ def lengthOfCommonPrefix(lis1,lis2):
 async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:int, cache: LRUCacheAnalytics):
 
     try:
+        # idc = int(cdata.id_contract)
+        # #if idc != 10740 and idc !=16183 and idc != 16184: # debug por número de contrato
+        # #    return
+        # if cdata.enderecos[endIndex].bairro == "Vila Santa Rita":
+        #     print("count_events_contract_endfixed ", cdata.enderecos[endIndex])
 
         element: Optional[InfraElement] = await findAddress(cache.mdb, cdata.enderecos[endIndex])
         if element is None:
@@ -198,6 +203,8 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
 
         for context in contexts:
             #print("context", context)
+            # if context[0] != "624087c95ceb4d10a5135040":
+            #     continue
 
             if cdata.DT_INICIO:
                 idv: ISPDateEvent = ISPDateEvent\
@@ -296,6 +303,8 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                     for context in contexts:
                         for pnivel in range(len(fullPackNameList)):
                             sl = "/".join((fullPackNameList[:pnivel + 1]))+"/"
+                            # if context[0] != "624087c95ceb4d10a5135040" or sl != "internet/":
+                            #     continue
                             #scontext = context + "#" + sl
                             #print("scontext", scontext)
                             if sp.DT_ATIVACAO:
@@ -311,6 +320,10 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                                 sidvs.append(idv)
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Valor", metricValue=sp.VL_SERVICO, dt=sp.DT_ATIVACAO)
                                 sidvs.append(idv)
+
+                                # if context[0] == "624087c95ceb4d10a5135040" and sl=="internet/":
+                                #     await cache.mdb.debugCount.insert_one({"id_contract":cdata.id_contract, "valor": sp.VL_SERVICO, "contagem":1, "dt":sp.DT_ATIVACAO})
+
                                 if sp.download_speed is None:
                                     raise SemDownloadException()
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=sp.download_speed, dt=sp.DT_ATIVACAO)
@@ -326,7 +339,7 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                                         idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="MigracaoEntradaPacoteNuncaAtivado/", metricName="Contagem", metricValue=1, dt=sp.DT_CADASTRO)
                                         idvs.append(idv)
 
-                            if not sp.DT_DESATIVACAO and cdata.DT_CANCELAMENTO and i_sp == len(cdata.services)-1:
+                            if not sp.DT_DESATIVACAO and cdata.DT_CANCELAMENTO:# and i_sp == len(cdata.services)-1:
                                 sp.DT_DESATIVACAO = cdata.DT_CANCELAMENTO;
 
                             if sp.DT_DESATIVACAO:
@@ -350,6 +363,10 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                                 sidvs.append(idv)
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=-sp.upload_speed, dt=sp.DT_DESATIVACAO)
                                 sidvs.append(idv)
+
+                                # if context[0] == "624087c95ceb4d10a5135040" and sl=="internet/":
+                                #     await cache.mdb.debugCount.insert_one({"id_contract":cdata.id_contract, "valor": -sp.VL_SERVICO, "contagem":-1, "dt":sp.DT_DESATIVACAO})
+
 
                             for ticket in sp.tickets:
                                 if ticket.DT_ABERTURA:
