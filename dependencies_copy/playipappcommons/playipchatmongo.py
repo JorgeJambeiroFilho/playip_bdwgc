@@ -91,7 +91,7 @@ def createIndex_analytics(mdb, anatabname):
 
 def getBotMongoDB():
     global playIPChatHelperDB
-    if not playIPChatHelperDB:
+    if playIPChatHelperDB is None:
         playIPChatHelperDB = getMongoClient().PlayIPChatHelper
         print("Create Indexes")
         createIndex_Infra_WordPair(playIPChatHelperDB)
