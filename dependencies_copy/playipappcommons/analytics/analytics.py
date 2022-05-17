@@ -237,7 +237,7 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                 idvs.append(idv)
 
 
-            if cdata.DT_ATIVACAO:
+            if cdata.DT_ATIVACAO and (cdata.STATUS_CONTRATO!="Cancelamento" or cdata.DT_CANCELAMENTO):
                 idv: ISPDateEvent = ISPDateEvent\
                 (
                     infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
@@ -248,6 +248,13 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                 (
                     infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
                     eventType="ContratosAtivos/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
+                )
+                idvs.append(idv)
+            if cdata.DT_ATIVACAO:
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="ContratoCanceladoSemData/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
                 )
                 idvs.append(idv)
             else:
@@ -274,7 +281,7 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                 )
                 idvs.append(idv)
 
-        if cdata.DT_ATIVACAO:
+        if cdata.DT_ATIVACAO and (cdata.STATUS_CONTRATO!="Cancelamento" or cdata.DT_CANCELAMENTO):
             if not cdata.services:
                 print("Contrato sem serviços")
 

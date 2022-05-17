@@ -61,6 +61,7 @@ class ContractAnalyticData(pydantic.BaseModel):
     DT_FIM: float # no WGC é simplesmente 1 ano depois de DT_INICIO
     DT_ATIVACAO: Optional[float]
     DT_CANCELAMENTO: Optional[float]
+    STATUS_CONTRATO: str
     enderecos: List[Endereco] # os endereços são vários para que seja possível manter estruturas paralelas com agruopamentos convenientes
                               # na verdade, é sempre memso endereço com modificações que levam a contabilização para outro ramo,
                               # tipicamente há uma versão comercial e uma estrutural
