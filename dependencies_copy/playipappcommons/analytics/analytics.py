@@ -332,7 +332,9 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                                 #     await cache.mdb.debugCount.insert_one({"id_contract":cdata.id_contract, "valor": sp.VL_SERVICO, "contagem":1, "dt":sp.DT_ATIVACAO})
 
                                 if sp.download_speed is None:
-                                    raise SemDownloadException()
+                                    sp.download_speed = 0
+                                    sp.upload_speed = 0
+                                    #raise SemDownloadException()
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=sp.download_speed, dt=sp.DT_ATIVACAO)
                                 sidvs.append(idv)
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=sp.upload_speed, dt=sp.DT_ATIVACAO)
@@ -365,7 +367,9 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Valor", metricValue=-sp.VL_SERVICO, dt=sp.DT_DESATIVACAO)
                                 sidvs.append(idv)
                                 if sp.download_speed is None:
-                                    raise SemDownloadException()
+                                    sp.download_speed = 0
+                                    sp.upload_speed = 0
+                                    #raise SemDownloadException()
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Download", metricValue=-sp.download_speed, dt=sp.DT_DESATIVACAO)
                                 sidvs.append(idv)
                                 idv: ISPDateEvent = ISPDateEvent(infraElementId=context[0], infraElementOptic=context[1], fullProductName=sl, eventType="Pacote/", metricName="Upload", metricValue=-sp.upload_speed, dt=sp.DT_DESATIVACAO)

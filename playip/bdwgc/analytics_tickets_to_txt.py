@@ -1,7 +1,8 @@
+from playip.bdwgc.sql_import_analytics_tickets import sql_analytics_tickets
+
 import pyodbc
 import datetime
 
-from playip.bdwgc.sql_import_analytics_tickets import sql_analytics_tickets
 
 server = '170.238.84.12'
 database = 'WGC'
