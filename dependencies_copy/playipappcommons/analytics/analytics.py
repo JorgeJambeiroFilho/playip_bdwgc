@@ -236,27 +236,29 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                 )
                 idvs.append(idv)
 
-
-            if cdata.DT_ATIVACAO and (cdata.STATUS_CONTRATO!="Cancelamento" or cdata.DT_CANCELAMENTO):
-                idv: ISPDateEvent = ISPDateEvent\
-                (
-                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
-                    eventType="Instalacao/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
-                )
-                idvs.append(idv)
-                idv: ISPDateEvent = ISPDateEvent\
-                (
-                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
-                    eventType="ContratosAtivos/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
-                )
-                idvs.append(idv)
             if cdata.DT_ATIVACAO:
-                idv: ISPDateEvent = ISPDateEvent\
-                (
-                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
-                    eventType="ContratoCanceladoSemData/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
-                )
-                idvs.append(idv)
+                if cdata.STATUS_CONTRATO!="Cancelamento" or cdata.DT_CANCELAMENTO:
+                    idv: ISPDateEvent = ISPDateEvent\
+                    (
+                        infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                        eventType="Instalacao/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
+                    )
+                    idvs.append(idv)
+                    idv: ISPDateEvent = ISPDateEvent\
+                    (
+                        infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                        eventType="ContratosAtivos/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
+                    )
+                    idvs.append(idv)
+
+                elif not cdata.DT_CANCELAMENTO:
+                    idv: ISPDateEvent = ISPDateEvent\
+                    (
+                        infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                        eventType="ContratoCanceladoSemData/", metricName="Contagem", metricValue=1, dt=cdata.DT_INICIO
+                    )
+                    idvs.append(idv)
+
             else:
                 idv: ISPDateEvent = ISPDateEvent\
                 (
@@ -282,8 +284,26 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                 idvs.append(idv)
 
         if cdata.DT_ATIVACAO and (cdata.STATUS_CONTRATO!="Cancelamento" or cdata.DT_CANCELAMENTO):
+
             if not cdata.services:
-                print("Contrato sem serviços")
+                print("Contrato sem serviços ",cdata.id_contract)
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="ContratoSemServicos/", metricName="Contagem", metricValue=1, dt=cdata.DT_ATIVACAO
+                )
+                idvs.append(idv)
+            elif cdata.services[-1].DT_DESATIVACAO and not cdata.DT_CANCELAMENTO:
+                print("Contrato sem cancelamento sem serviços ativos", cdata.id_contract, cdata.STATUS_CONTRATO)
+                idv: ISPDateEvent = ISPDateEvent\
+                (
+                    infraElementId=context[0], infraElementOptic=context[1], fullProductName="Contrato/",
+                    eventType="ContratoSemServicos/", metricName="Contagem", metricValue=1, dt=cdata.services[-1].DT_DESATIVACAO
+                )
+                idvs.append(idv)
+
+
+
 
             counted_service = False
             for i_sp in range(len(cdata.services)):
