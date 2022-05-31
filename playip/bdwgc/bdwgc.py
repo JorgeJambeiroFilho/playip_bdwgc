@@ -2,11 +2,12 @@
 from typing import Optional
 from typing import List
 from dynaconf import settings
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 import pydantic
 import fastapi
 import pyodbc
 
+from playipappcommons.auth.oauth2FastAPI import defaultpermissiondep
 from playipappcommons.infra.endereco import Endereco
 from playipappcommons.ispbd.ispbddata import Client, ContractData
 
@@ -25,7 +26,7 @@ def getWDB():
 
 
 @wgcrouter.get("/getclientfromcpfcnpj/{cpfcnpj}", response_model=Client)
-async def getClientFromCPFCNPJ(cpfcnpj:str) -> Client:
+async def getClientFromCPFCNPJ(cpfcnpj:str, auth=Depends(defaultpermissiondep)) -> Client:
     wdb = getWDB()
 
     if len(cpfcnpj) == 11:
@@ -77,7 +78,7 @@ async def getClientFromCPFCNPJ(cpfcnpj:str) -> Client:
                 return client
 
 @wgcrouter.get("/getcontracts/{id_client}", response_model=List[ContractData])
-async def getContracts(id_client: str) -> List[ContractData]:
+async def getContracts(id_client: str, auth=Depends(defaultpermissiondep)) -> List[ContractData]:
     wdb = getWDB()
     contract_list: List[str] = []
 
@@ -104,7 +105,7 @@ async def getContracts(id_client: str) -> List[ContractData]:
     return contracts
 
 @wgcrouter.get("/getcontractsfromcpfcnpj/{cpfcnpj}", response_model=List[ContractData])
-async def getContractsFromCPFCNPJ(cpfcnpj: str) -> List[ContractData]:
+async def getContractsFromCPFCNPJ(cpfcnpj: str, auth=Depends(defaultpermissiondep)) -> List[ContractData]:
     client: Client = await getClientFromCPFCNPJ(cpfcnpj)
     if client:
         contracts: List[ContractData] = await getContracts(client.id_client)
@@ -114,7 +115,7 @@ async def getContractsFromCPFCNPJ(cpfcnpj: str) -> List[ContractData]:
 
 
 @wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
-async def getContract(id_contract:str) -> ContractData:
+async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> ContractData:
     wdb = getWDB()
 
     #existe uma tabela chamada Servico que tinha tudo para ser relevante aqui, mas não foi
