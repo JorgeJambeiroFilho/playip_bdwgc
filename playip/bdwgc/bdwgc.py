@@ -193,6 +193,8 @@ async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> Co
             endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, cep=cep, condominio=condominio, cidade=cidade, bairro=bairro, uf=uf, medianetwork=medianetwork)
             res.endereco = endereco
 
+    print("getContract res = ", res)
+
     return res
 
 
