@@ -1,3 +1,9 @@
+# condiderar trocar
+# INNER JOIN PacoteServico_Servico as s on (ps.ID_PACOTE_SERVICO=s.ID_PACOTE_SERVICO)
+# por
+# INNER JOIN PacoteServico_Servico as s on (cps.ID_SERVICO=s.ID_SERVICO)
+# pois a primeira opção pode estar gerando duplicações
+
 sql_analytics_tickets = """
             SELECT  
 

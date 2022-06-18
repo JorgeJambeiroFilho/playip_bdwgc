@@ -1,4 +1,5 @@
-
+import datetime
+from asyncio import Condition
 from typing import Optional
 from typing import List
 from dynaconf import settings
@@ -16,17 +17,57 @@ print("FASTAPI version ",fastapi.__version__)
 wgcrouter = APIRouter(prefix="/playipispbd/basic")
 
 gwbd = None
+condBD = Condition()
+bdConnectionNumber = 0
+timeConnect = 0
 
 def getWDB():
     global gwbd
-    if not gwbd:
-        gwbd = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+settings.SERVER+';DATABASE='+settings.DATABASE+';UID='+settings.USERNAME+';PWD='+ settings.PASSWORD)
-    return gwbd
+    global timeConnect
+    with condBD:
+        if not gwbd:
+            gwbd = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+settings.SERVER+';DATABASE='+settings.DATABASE+';UID='+settings.USERNAME+';PWD='+ settings.PASSWORD)
+            timeConnect = datetime.datetime.now().timestamp()
+        return gwbd
+
+def renewWDB(num):
+    global gwbd
+    global bdConnectionNumber
+    global timeConnect
+    time = datetime.datetime.now().timestamp()
+    with condBD:
+        # Se a conexão atual falhou, a invalida para forçar reconexão
+        # Para evitar que falhas quase simultâneas resultem em várias conexoes, verifica se a conexao usada foi memso a última
+        # Evita tentar de reconectar vária vezes por segundo. Em lugar disso deixa alguns casos falharem.
+        if num >= bdConnectionNumber and time - timeConnect > 1000:
+            try:
+                gwbd.close()
+            except:
+                pass
+            gwbd = None
+            bdConnectionNumber += 1
+
 
 
 
 @wgcrouter.get("/getclientfromcpfcnpj/{cpfcnpj}", response_model=Client)
 async def getClientFromCPFCNPJ(cpfcnpj:str, auth=Depends(defaultpermissiondep)) -> Client:
+    global gwbd
+    global bdConnectionNumber
+    num = bdConnectionNumber
+    try:
+        return await getClientFromCPFCNPJInternal(cpfcnpj, auth)
+    except pyodbc.Error as pe:
+        print("Error:", pe)
+        if pe.args[0] == "08S01":  # Communication error.
+            renewWDB(num)
+            return await getClientFromCPFCNPJInternal(cpfcnpj, auth)
+        else:
+            raise  # Re-raise any other exception
+
+
+
+async def getClientFromCPFCNPJInternal(cpfcnpj:str, auth=Depends(defaultpermissiondep)) -> Client:
     wdb = getWDB()
 
     if len(cpfcnpj) == 11:
@@ -113,14 +154,8 @@ async def getContractsFromCPFCNPJ(cpfcnpj: str, auth=Depends(defaultpermissionde
     else:
         return []
 
-
-@wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
-async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> ContractData:
-    wdb = getWDB()
-
-    #existe uma tabela chamada Servico que tinha tudo para ser relevante aqui, mas não foi
-    with wdb.cursor() as cursor:
-        cursor.execute("""
+oldQuery = \
+"""
 
           SELECT  NM_PACOTE_SERVICO, VL_DOWNLOAD, VL_UPLOAD, s.VL_SERVICO, cps.DT_ATIVACAO, cps.DT_DESATIVACAO, 
                   dici.ID_TIPO_MEIO_ACESSO, dici.ID_TIPO_TECNOLOGIA, dici.ID_TIPO_PRODUTO, 
@@ -143,7 +178,41 @@ async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> Co
                 s.VL_DOWNLOAD > 0
           ORDER BY
                     DT_ATIVACAO DESC  
-                                            
+
+"""
+
+
+@wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
+async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> ContractData:
+    wdb = getWDB()
+
+    #existe uma tabela chamada Servico que tinha tudo para ser relevante aqui, mas não foi
+    with wdb.cursor() as cursor:
+        cursor.execute("""
+          SELECT  
+                  NM_PACOTE_SERVICO, s.VL_DOWNLOAD, s.VL_UPLOAD, s.VL_SERVICO, cps.DT_ATIVACAO, cps.DT_DESATIVACAO, 
+                  dici.ID_TIPO_MEIO_ACESSO, dici.ID_TIPO_TECNOLOGIA, dici.ID_TIPO_PRODUTO, 
+                  tmeio.TX_DESCRICAO_TIPO, ttec.TX_DESCRICAO_TIPO, tprod.TX_DESCRICAO_TIPO, uname.TX_USERNAME,
+                  bloq.ID_CONTRATO as bloq_id,
+                  cps.ID_CONTRATO,cps.ID_PACOTE_SERVICO, cps.ID_SERVICO, 
+                  ss.NM_SERVICO,uname.dt_desativacao
+          FROM 
+                  Contrato_PacoteServico_Servico as cps 
+                  INNER JOIN PacoteServico as ps on (cps.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO) 
+                  INNER JOIN PacoteServico_Servico as s on (cps.ID_SERVICO=s.ID_SERVICO) 
+                  INNER JOIN Servico as ss on (ss.ID_SERVICO=cps.ID_SERVICO)
+                  LEFT JOIN Servico_DICI as dici on (dici.ID_SERVICO=cps.ID_SERVICO)
+                  LEFT JOIN TiposDiversos as tmeio on (tmeio.ID_TIPO_DIVERSOS=dici.ID_TIPO_MEIO_ACESSO) 
+                  LEFT JOIN TiposDiversos as ttec on (ttec.ID_TIPO_DIVERSOS=dici.ID_TIPO_TECNOLOGIA) 
+                  LEFT JOIN TiposDiversos as tprod on (tprod.ID_TIPO_DIVERSOS=dici.ID_TIPO_PRODUTO) 
+                  LEFT JOIN UserName as uname on (cps.ID_CONTRATO=uname.ID_CONTRATO)
+                  LEFT JOIN CONTRATOS_BLOQUEADOS as bloq on (bloq.ID_CONTRATO=cps.ID_CONTRATO)
+          WHERE 
+                cps.ID_CONTRATO={param_id_contrato} and
+                ss.NM_SERVICO like '%SCM'
+          ORDER BY
+                    DT_ATIVACAO DESC 
+                                  
                          """.format(param_id_contrato=id_contract))
         row = cursor.fetchone()
         if not row or row[5]: #se tem data de desativação, não vale
