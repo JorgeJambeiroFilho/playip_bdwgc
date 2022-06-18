@@ -45,7 +45,7 @@ async def getImportAddressesResult(auth=Depends(infrapermissiondep)) -> ImportAd
 
 async def importAddressesIntern() -> ImportAddressResult:
     mdb = getBotMongoDB()
-    wdb = getWDB()
+    wdb = await getWDB()
     global onGoingImportAddressResult
     res: ImportAddressResult = onGoingImportAddressResult
     importExecUID: str = str(uuid.uuid1())

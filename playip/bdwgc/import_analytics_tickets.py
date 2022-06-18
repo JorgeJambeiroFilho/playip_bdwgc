@@ -27,7 +27,7 @@ class ObjRow:
     pass
 
 async def getContratoPacoteServicoTicketIterator() -> AsyncGenerator[ServicePackAndContractAnalyticData, None]:
-    wdb = getWDB()
+    wdb = await getWDB()
 
     global onGoingImportAnalyticDataResult
     res: ImportAnalyticDataResult = onGoingImportAnalyticDataResult

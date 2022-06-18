@@ -21,7 +21,7 @@ condBD = Condition()
 bdConnectionNumber = 0
 timeConnect = 0
 
-def getWDB():
+async def getWDB():
     global gwbd
     global timeConnect
     async with condBD:
@@ -30,7 +30,7 @@ def getWDB():
             timeConnect = datetime.datetime.now().timestamp()
         return gwbd
 
-def renewWDB(num):
+async def renewWDB(num):
     global gwbd
     global bdConnectionNumber
     global timeConnect
@@ -60,7 +60,7 @@ async def getClientFromCPFCNPJ(cpfcnpj:str, auth=Depends(defaultpermissiondep)) 
     except pyodbc.Error as pe:
         print("Error:", pe)
         if pe.args[0] == "08S01":  # Communication error.
-            renewWDB(num)
+            await renewWDB(num)
             return await getClientFromCPFCNPJInternal(cpfcnpj, auth)
         else:
             raise  # Re-raise any other exception
@@ -68,7 +68,7 @@ async def getClientFromCPFCNPJ(cpfcnpj:str, auth=Depends(defaultpermissiondep)) 
 
 
 async def getClientFromCPFCNPJInternal(cpfcnpj:str, auth=Depends(defaultpermissiondep)) -> Client:
-    wdb = getWDB()
+    wdb = await getWDB()
 
     if len(cpfcnpj) == 11:
         with wdb.cursor() as cursor:
@@ -120,7 +120,7 @@ async def getClientFromCPFCNPJInternal(cpfcnpj:str, auth=Depends(defaultpermissi
 
 @wgcrouter.get("/getcontracts/{id_client}", response_model=List[ContractData])
 async def getContracts(id_client: str, auth=Depends(defaultpermissiondep)) -> List[ContractData]:
-    wdb = getWDB()
+    wdb = await getWDB()
     contract_list: List[str] = []
 
     with wdb.cursor() as cursor:
@@ -184,7 +184,7 @@ oldQuery = \
 
 @wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
 async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> ContractData:
-    wdb = getWDB()
+    wdb = await getWDB()
 
     #existe uma tabela chamada Servico que tinha tudo para ser relevante aqui, mas não foi
     with wdb.cursor() as cursor:
