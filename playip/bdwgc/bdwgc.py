@@ -24,7 +24,7 @@ timeConnect = 0
 def getWDB():
     global gwbd
     global timeConnect
-    with condBD:
+    async with condBD:
         if not gwbd:
             gwbd = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+settings.SERVER+';DATABASE='+settings.DATABASE+';UID='+settings.USERNAME+';PWD='+ settings.PASSWORD)
             timeConnect = datetime.datetime.now().timestamp()
@@ -35,7 +35,7 @@ def renewWDB(num):
     global bdConnectionNumber
     global timeConnect
     time = datetime.datetime.now().timestamp()
-    with condBD:
+    async with condBD:
         # Se a conexão atual falhou, a invalida para forçar reconexão
         # Para evitar que falhas quase simultâneas resultem em várias conexoes, verifica se a conexao usada foi memso a última
         # Evita tentar de reconectar vária vezes por segundo. Em lugar disso deixa alguns casos falharem.
