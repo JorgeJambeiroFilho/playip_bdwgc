@@ -16,7 +16,7 @@ from playipappcommons.auth.oauth2 import get_oauth2_login_url_common, checkSessi
 def permission(required_permission: str = None):
     def Inner(func):
         def wrapper(*args, **kwargs):
-            print("wrapper ",required_permission)
+            #print("wrapper ",required_permission)
             request = kwargs["request"]
             if not checkSession(request, required_permission):
                 res = PlainTextResponse("faltou permissão: "+required_permission, status_code=403)
@@ -59,11 +59,11 @@ def get_oauth2_login_url_intern(request: Request):
     host = request.headers["host"]
     headers = request.headers
     scheme = request.url.scheme
-    print(request.headers)
+    #print(request.headers)
     url, state = get_oauth2_login_url_common(host, scheme, headers)
     response = RedirectResponse(url=url)
     response.set_cookie(key="playipapp_oauth_state", value=state, path="/")
-    print("state " + state)
+    #print("state " + state)
     return response
 
 

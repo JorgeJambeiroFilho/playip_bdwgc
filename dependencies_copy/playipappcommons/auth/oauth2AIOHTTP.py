@@ -44,9 +44,9 @@ async def oauth2_callback_aiohttp(secret, request: BaseRequest):
         resp: ClientResponse = await openClientSession.post(settings.OAUTH2_TOKEN_URL, data=form())
         body = await resp.read()
         jsonToken = json.loads(body)
-        print("json token ____________________________________")
-        print(jsonToken)
-        print("json token end ____________________________________")
+        # print("json token ____________________________________")
+        # print(jsonToken)
+        # print("json token end ____________________________________")
         key = "Bearer " + jsonToken["access_token"]
         aheaders = CIMultiDict()
         aheaders.add("Authorization", key)
@@ -60,9 +60,9 @@ async def oauth2_callback_aiohttp(secret, request: BaseRequest):
         #    clicar em "Add to userinfo"
 
         jsonUser = json.loads(body)
-        print("json user ____________________________________")
-        print(jsonUser)
-        print("json user end ____________________________________")
+        # print("json user ____________________________________")
+        # print(jsonUser)
+        # print("json user end ____________________________________")
 
         await openClientSession.close()
     except:
@@ -118,8 +118,8 @@ async def logout_aiohttp(secret:str, request: BaseRequest):
             return res
 
         id_token = session_data["id_token"]
-        print("id_token")
-        print(id_token)
+        # print("id_token")
+        # print(id_token)
 
         url = "{burl}?id_token_hint={token}&post_logout_redirect_uri={callback}" \
              .format(burl=settings.OAUTH2_LOGOUT_URL, token=id_token, callback=callback)
@@ -145,5 +145,5 @@ def get_oauth2_login_url_aiohttp(request: BaseRequest):
       res = web.HTTPFound(url)
       #res.cookies["playipapp_oauth_state"] = state
       res.set_cookie("playipapp_oauth_state", state, path="/")
-      print("state "+state)
+      #print("state "+state)
       return res

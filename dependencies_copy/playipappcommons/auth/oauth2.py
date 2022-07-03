@@ -37,12 +37,12 @@ def checkSessionCommon(cookies, secret, permission=None):
         return False
     session_str = cookies["playipappsession"]
 
-    print("SESSION STRING")
-    print(session_str)
+    #print("SESSION STRING")
+    #print(session_str)
     try:
         session_data = jwt.decode(session_str, secret, algorithms='HS256')
-        print("required permission ", permission)
-        print("session_data", session_data)
+        #print("required permission ", permission)
+        #print("session_data", session_data)
         if "timeini" not in session_data:
             return False
         if permission is not None:
