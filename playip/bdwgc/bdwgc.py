@@ -1,4 +1,5 @@
 import datetime
+import traceback
 from asyncio import Condition
 from typing import Optional
 from typing import List
@@ -21,6 +22,7 @@ condBD = Condition()
 bdConnectionNumber = 0
 timeConnect = 0
 
+
 async def getWDB():
     global gwbd
     global timeConnect
@@ -29,6 +31,7 @@ async def getWDB():
             gwbd = pyodbc.connect('DRIVER={ODBC Driver 17 for SQL Server};SERVER='+settings.SERVER+';DATABASE='+settings.DATABASE+';UID='+settings.USERNAME+';PWD='+ settings.PASSWORD)
             timeConnect = datetime.datetime.now().timestamp()
         return gwbd
+
 
 async def renewWDB(num):
     global gwbd
@@ -41,12 +44,12 @@ async def renewWDB(num):
         # Evita tentar de reconectar vária vezes por segundo. Em lugar disso deixa alguns casos falharem.
         if num >= bdConnectionNumber and time - timeConnect > 1000:
             try:
-                gwbd.close()
+                if gwbd:
+                    gwbd.close()
             except:
                 pass
             gwbd = None
             bdConnectionNumber += 1
-
 
 
 
@@ -59,7 +62,8 @@ async def getClientFromCPFCNPJ(cpfcnpj:str, auth=Depends(defaultpermissiondep)) 
         return await getClientFromCPFCNPJInternal(cpfcnpj, auth)
     except pyodbc.Error as pe:
         print("Error:", pe)
-        if pe.args[0] == "08S01":  # Communication error.
+        if True or pe.args[0] == "08S01":  # Communication error.
+            traceback.print_exc()
             await renewWDB(num)
             return await getClientFromCPFCNPJInternal(cpfcnpj, auth)
         else:
@@ -120,6 +124,22 @@ async def getClientFromCPFCNPJInternal(cpfcnpj:str, auth=Depends(defaultpermissi
 
 @wgcrouter.get("/getcontracts/{id_client}", response_model=List[ContractData])
 async def getContracts(id_client: str, auth=Depends(defaultpermissiondep)) -> List[ContractData]:
+    global gwbd
+    global bdConnectionNumber
+    num = bdConnectionNumber
+    try:
+        return await getContractsInternal(id_client, auth)
+    except pyodbc.Error as pe:
+        print("Error:", pe)
+        if True or pe.args[0] == "08S01":  # Communication error.
+            traceback.print_exc()
+            await renewWDB(num)
+            return await getContractsInternal(id_client, auth)
+        else:
+            raise  # Re-raise any other exception
+
+
+async def getContractsInternal(id_client: str, auth=Depends(defaultpermissiondep)) -> List[ContractData]:
     wdb = await getWDB()
     contract_list: List[str] = []
 
@@ -184,6 +204,22 @@ oldQuery = \
 
 @wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
 async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> ContractData:
+    global gwbd
+    global bdConnectionNumber
+    num = bdConnectionNumber
+    try:
+        return await getContractInternal(id_contract, auth)
+    except pyodbc.Error as pe:
+        print("Error:", pe)
+        if True or pe.args[0] == "08S01":  # Communication error.
+            traceback.print_exc()
+            await renewWDB(num)
+            return await getContractInternal(id_contract, auth)
+        else:
+            raise  # Re-raise any other exception
+
+
+async def getContractInternal(id_contract: str, auth=Depends(defaultpermissiondep)) -> ContractData:
     wdb = await getWDB()
 
     #existe uma tabela chamada Servico que tinha tudo para ser relevante aqui, mas não foi
