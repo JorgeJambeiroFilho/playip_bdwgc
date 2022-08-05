@@ -4,8 +4,10 @@ from typing import List, Tuple
 from bson import ObjectId
 
 from playipappcommons.famongo import FAMongoId
+from playipappcommons.infra.endereco import getFieldNameByLevel, Endereco
 from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
 from playipappcommons.playipchatmongo import getBotMongoDB, getMongoClient
+from playipappcommons.util.levenshtein import levenshteinDistanceDP
 
 
 async def getChildren(mdb, pid:ObjectId) -> List[InfraElement]:
@@ -142,6 +144,8 @@ async def getInfraElementAddressHier(id:FAMongoId) -> List[FAMongoId]:
         _id = ascendant.parentAddressId
     lis.reverse()
     return lis
+
+
 
 async def getInfraElementStructuralHier(id:FAMongoId) -> List[FAMongoId]:
     mdb = getBotMongoDB()
@@ -421,3 +425,80 @@ async def removeInfraElement(elemId: str):
             await remove(elem_id)
 
     return {"error":"ok", "_id": elemId}
+
+def calc_pmatch(nome, n):
+    if len(nome) == 0 and len(n) == 0:
+        return 1
+    d = levenshteinDistanceDP(nome, n)
+    return 1 - d / max(len(nome), len(n))
+
+
+# def findApprox(nome, subs):
+#
+#     ibest = -1
+#     best_pmatch = 0
+#     for i in range(len(subs)):
+#         sub = subs[i]
+#         for n in sub.nomes.keys():
+#             pmatch = calc_pmatch(nome, n)
+#             if pmatch > best_pmatch:
+#                 best_pmatch = pmatch
+#                 ibest = i
+#     if best_pmatch > 0.95:
+#         return ibest
+#     else:
+#         return -1
+
+def findApprox(nome:str, subs: List[InfraElement], nivel: int):
+
+    fieldName = getFieldNameByLevel(nivel)
+    useApprox = fieldName == "logradouro" or fieldName == "bairro"
+    lnome = nome.lower()
+    best:InfraElement = None
+    best_pmatch = 0
+    for sub in subs:
+        for fn in sub.addressLevelValues:
+            n = fn.split("/")[-1]
+            if useApprox:
+                pmatch = calc_pmatch(lnome, n.lower())
+            else:
+                pmatch = 1.0 if lnome == n.lower() else 0.0
+
+            if pmatch > best_pmatch:
+                best_pmatch = pmatch
+                best = sub
+    if best_pmatch > 0.90:
+        return best
+    else:
+        return None
+
+
+async def isApproxField(nome:str, ie: InfraElement, nivel: int, threshold:float=0.9):
+    fieldName = getFieldNameByLevel(nivel)
+    useApprox = fieldName == "logradouro" or fieldName == "bairro"
+    lnome = nome.lower()
+    best_pmatch = 0
+    for fn in ie.addressLevelValues:
+        n = fn.split("/")[-1]
+        if useApprox:
+            pmatch = calc_pmatch(lnome, n.lower())
+        else:
+            pmatch = 1.0 if lnome == n.lower() else 0.0
+
+        if pmatch > best_pmatch:
+            best_pmatch = pmatch
+
+    return best_pmatch > threshold
+
+
+async def isApproxAddr(endereco:Endereco, eid:FAMongoId, threshold):
+
+    eids = await getInfraElementAddressHier(eid)
+    for i in range(1, len(eids)):
+        ie: InfraElement = await getInfraElement(str(eids[i]))
+        nome = endereco.getFieldValueByLevel(i)
+        if nome:
+            ia = await isApproxField(nome, ie, i, threshold)
+            if not ia:
+                return False
+    return True
