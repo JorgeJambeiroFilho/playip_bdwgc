@@ -170,6 +170,8 @@ async def getContractsFromCPFCNPJ(cpfcnpj: str, auth=Depends(defaultpermissionde
     client: Client = await getClientFromCPFCNPJ(cpfcnpj)
     if client:
         contracts: List[ContractData] = await getContracts(client.id_client)
+        print("______Contratos______")
+        print(contracts)
         return contracts
     else:
         return []
