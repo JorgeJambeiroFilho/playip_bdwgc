@@ -221,6 +221,18 @@ async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> Co
             raise  # Re-raise any other exception
 
 
+def getTimeStamp(v):
+    if v is None:
+        return None
+    elif isinstance(v, datetime.datetime):
+        return v.timestamp()
+    elif isinstance(v, datetime.date):
+        v = datetime.datetime(v.year, v.month, v.day)
+        return v.timestamp()
+    elif isinstance(v,float):
+        return v
+
+
 async def getContractInternal(id_contract: str, auth=Depends(defaultpermissiondep)) -> ContractData:
     wdb = await getWDB()
 
@@ -265,8 +277,8 @@ async def getContractInternal(id_contract: str, auth=Depends(defaultpermissionde
             userName = row[12]
             bloqId = row[13]
             isBlocked = bloqId is not None
-            dt_ativacao: Optional[float] = row[4].timestamp() if row[4] else None
-            dt_cancelamento: Optional[float] = row[5].timestamp() if row[5] else None
+            dt_ativacao: Optional[float] = getTimeStamp(row[4])
+            dt_cancelamento: Optional[float] = getTimeStamp(row[5])
 
             home_access_type = "smartolt" if is_ftth else "aircontrol" if is_radio else "none"
 
