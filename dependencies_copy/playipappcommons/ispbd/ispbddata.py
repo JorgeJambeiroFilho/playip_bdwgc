@@ -19,6 +19,11 @@ class ContractData(pydantic.BaseModel):
     home_access_type:Optional[str] = None
     endereco: Optional[Endereco] = None
     bloqueado: Optional[bool] = None
+    dt_ativacao: Optional[float] = None
+    dt_cancelamento: Optional[float] = None
+
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
 
     def getMedia(self):
         return "Rádio" if self.is_radio else "Cabo"

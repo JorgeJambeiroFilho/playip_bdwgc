@@ -29,8 +29,9 @@ async def isApproxAddr2(enderecoCand:Endereco, enderecoCadastro:Endereco):
 async def selectCompatibleContracts(enderecoCand:Endereco, contratos:List[ContractData]):
     selected: List[ContractData] = []
     for contrato in contratos:
-        contrato.endereco.prefix = "Comercial"
-        if await isApproxAddr2(enderecoCand, contrato.endereco):
-            selected.append(contrato)
+        if not contrato.dt_cancelamento and contrato.endereco:
+            contrato.endereco.prefix = "Comercial"
+            if await isApproxAddr2(enderecoCand, contrato.endereco):
+                selected.append(contrato)
     return selected
 

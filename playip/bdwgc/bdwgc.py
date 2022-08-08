@@ -265,10 +265,15 @@ async def getContractInternal(id_contract: str, auth=Depends(defaultpermissionde
             userName = row[12]
             bloqId = row[13]
             isBlocked = bloqId is not None
+            dt_ativacao: Optional[float] = row[4].timestamp() if row[4] else None
+            dt_cancelamento: Optional[float] = row[5].timestamp() if row[5] else None
 
             home_access_type = "smartolt" if is_ftth else "aircontrol" if is_radio else "none"
 
-            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name, is_radio=is_radio, is_ftth=is_ftth, found=True, user_name=userName, home_access_key=userName, home_access_type=home_access_type, bloqueado=isBlocked)
+            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name,
+                               is_radio=is_radio, is_ftth=is_ftth, found=True, user_name=userName,
+                               home_access_key=userName, home_access_type=home_access_type, bloqueado=isBlocked,
+                               dt_ativacao=dt_ativacao, dt_cancelamento=dt_cancelamento)
 
     with wdb.cursor() as cursor:
         cursor.execute("""
