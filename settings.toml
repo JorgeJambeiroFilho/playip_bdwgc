@@ -5,7 +5,7 @@
 [prodtemp]
 
 [production]
-SERVER = '170.238.84.12'
+SERVER = '170.238.84.126'
 DATABASE = 'WGC'
 USERNAME = 'wgcplayip'
 PASSWORD = 'teste01*'
