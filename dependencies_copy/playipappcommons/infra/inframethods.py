@@ -718,7 +718,7 @@ async def isApproxAddr(endereco:Endereco, eid:FAMongoId, threshold):
         ie: InfraElement = await getInfraElement(str(eids[i]))
         nome = endereco.getFieldValueByLevel(i)
         if nome:
-            ia = await isApproxField(nome, ie, i, 0.5) #threshold
+            ia = await isApproxFieldWithProbWhenNeeded(nome, ie, i, 0.9) #threshold
             if not ia:
                 return False
     return True

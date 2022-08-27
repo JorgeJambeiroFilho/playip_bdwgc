@@ -34,7 +34,7 @@ async def selectCompatibleContracts(enderecoCand:Endereco, contratos:List[Contra
         if not contrato.dt_cancelamento and contrato.endereco:
             contrato.endereco.prefix = "Comercial"
             print(contrato.endereco.cep)
-            if contrato.endereco.cep.strip() == enderecoCandSemLogradouro.cep.strip():
+            if enderecoCand.cep and contrato.endereco.cep.strip() == enderecoCand.cep.strip():
                 #print("CEP match")
                 if await isApproxAddr2(enderecoCandSemLogradouro, contrato.endereco):
                     selected.append(contrato)
