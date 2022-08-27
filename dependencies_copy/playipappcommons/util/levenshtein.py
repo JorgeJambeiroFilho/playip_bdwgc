@@ -33,14 +33,17 @@ charMap =\
 
 }
 
-def levenshteinDistanceDP(token1, token2):
+
+
+# deleta do token1 e insere no token1 para chegar no token2
+def levenshteinDistanceDP(token1, token2, cost_replace=1, cost_del=1, cost_ins=1):
     distances = numpy.zeros((len(token1) + 1, len(token2) + 1))
 
     for t1 in range(len(token1) + 1):
-        distances[t1][0] = t1
+        distances[t1][0] = t1 * cost_ins
 
     for t2 in range(len(token2) + 1):
-        distances[0][t2] = t2
+        distances[0][t2] = t2 * cost_del
 
     a = 0
     b = 0
@@ -52,7 +55,7 @@ def levenshteinDistanceDP(token1, token2):
                 distances[t1][t2] = distances[t1 - 1][t2 - 1]
             else:
 
-                rep_cost = 1
+                rep_cost = cost_replace
                 if token1[t1 - 1] < token2[t2 - 1]:
                     lc = token1[t1 - 1]
                     hc = token2[t2 - 1]
@@ -63,8 +66,8 @@ def levenshteinDistanceDP(token1, token2):
                 if (lc, hc) in charMap:
                     rep_cost = charMap[(lc ,hc)]
 
-                a = distances[t1][t2 - 1] + 1
-                b = distances[t1 - 1][t2] + 1
+                a = distances[t1][t2 - 1] + cost_del
+                b = distances[t1 - 1][t2] + cost_ins
                 c = distances[t1 - 1][t2 - 1] + rep_cost
 
 
@@ -83,3 +86,7 @@ if __name__ == "__main__":
     print(levenshteinDistanceDP("Jorássico", "aJurássico"))
     print(levenshteinDistanceDP("Jurássico", "aJurássico"))
     print(levenshteinDistanceDP("Chácara Vitápolis", "Chacara Vitapolis"))
+    print(levenshteinDistanceDP("abacate","abacte", cost_replace=3, cost_ins=3, cost_del=1))
+    print(levenshteinDistanceDP("abacte", "abacate", cost_replace=3, cost_ins=3, cost_del=1))
+
+

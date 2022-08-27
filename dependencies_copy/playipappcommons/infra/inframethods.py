@@ -1,10 +1,13 @@
+import asyncio
+import math
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from bson import ObjectId
 
+from playipappcommons.analytics.LRUCacheWordCount import LRUCacheWordCount, CountWordsResult, WordFreq
 from playipappcommons.famongo import FAMongoId
-from playipappcommons.infra.endereco import getFieldNameByLevel, Endereco
+from playipappcommons.infra.endereco import getFieldNameByLevel, Endereco, address_level_fields
 from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
 from playipappcommons.playipchatmongo import getBotMongoDB, getMongoClient
 from playipappcommons.util.levenshtein import levenshteinDistanceDP
@@ -473,6 +476,223 @@ def findApprox(nome:str, subs: List[InfraElement], nivel: int):
         return None
 
 
+wordCountCache = None
+
+async def probWordIncludingWrongFields(cache, campoCorreto:str, word:str):
+
+    sum  = 0.0
+    for campo in address_level_fields:
+        p = await probWord(cache, campo, word)
+        if campo != campoCorreto:
+            p *= 1.0/20
+        sum = sum + p - sum * p #probabilidade do OR
+    return sum
+
+async def probWord(cache, campo:str, word:str):
+
+    wfa: WordFreq = await cache.getByWord("ref", "global", "", campo, None)
+    wf: WordFreq = await cache.getByWord("target", "global", "", campo, word)
+    wfau: WordFreq = await cache.getByWord("ref_unique", "global", "", campo, None)
+
+    S = 10.0
+    pnew = wfau.freq / wfa.freq if wfa.freq else 1.0
+    pw_given_new = 1.0 / 10000  # uma estimativa grosseira
+    pw_given_not_new = (wf.freq + S / wfau.freq) / (wfa.freq + S) if wf.freq else 0.0
+
+    p = pnew * pw_given_new + (1-pnew) * pw_given_not_new
+
+
+    return p
+
+
+def log_prob_wcli_given_wcad(s_cli:str, s_cad:str):
+    d = levenshteinDistanceDP(s_cli, s_cad, cost_replace=math.log(10)+math.log(20), cost_del=math.log(10), cost_ins=math.log(10)+math.log(20))
+    return -d
+
+
+class Match:
+    def __init__(self):
+       self.other_word: Optional[str] = None
+       self.log_prob_cli_given_cad: float = -math.inf
+
+    def __repr__(self):
+        return ""+str(self.other_word) + " lp=" + str(self.log_prob_cli_given_cad) + " p=" + str(math.exp(self.log_prob_cli_given_cad))
+
+
+stopWords = { "de", "do", "dos", "da", "das"}
+class MissCost:
+   def __init__(self, word, log_prob, positionInString):
+       self.position = -1 # posicao na ranking de palavras mais raras do string. A mais rara do string sempre fica com zero.
+       self.postionInString = positionInString
+       self.log_prob = log_prob
+       self.word = word
+
+   def __repr__(self):
+       return self.word + " lp=" + str(self.log_prob) + " p=" + str(math.exp(self.log_prob))+ " pos=" + str(self.position)
+
+   def __lt__(self, ot):
+      return self.log_prob < ot.log_prob
+
+   def log_prob_miss_cli(self):
+       if self.word in stopWords:
+           return math.log(0.5)
+       elif self.postionInString > 3:
+           log_prob_miss_cli = -math.log(10) + self.log_prob
+       elif self.postionInString > 2:
+           log_prob_miss_cli = -math.log(20) + self.log_prob
+       elif self.position == 0:
+           log_prob_miss_cli = -math.log(200) + self.log_prob # além de dar um miss a palavra teria que ter sido escrita como está pelo cliente
+       else:
+           log_prob_miss_cli = -math.log(50) + self.log_prob
+       return log_prob_miss_cli
+
+   def log_prob_miss_cad(self):
+       if self.word in stopWords:
+           return math.log(0.5)
+       elif self.postionInString > 3:
+           log_prob_miss_cad = -math.log(10)
+       elif self.postionInString > 2:
+           log_prob_miss_cad = -math.log(20)
+       elif self.position == 0:
+           log_prob_miss_cad = -math.log(200) # aqui é só o miss mesmo, lembre que o cálculo é da probabilidade do que o cliente digitou dado o qeu está no cadastro
+       else:
+           log_prob_miss_cad = -math.log(50)
+       log_prob_miss_cad = max(log_prob_miss_cad, self.log_prob + math.log(10))
+       log_prob_miss_cad = min(log_prob_miss_cad, math.log(1.0/10))
+       return log_prob_miss_cad
+
+
+async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float=0.9):
+    lis_cli = [stripNonAlphaNum(s) for s in cli_value.lower().split()]
+    lis_cad = [stripNonAlphaNum(s) for s in cad_value.lower().split()]
+    rest_cli = set(lis_cli)
+    #rest_cad = set(lis_cad)
+    log_probs_cli = {}
+    log_probs_cad = {}
+    matches_cad = {}
+    matches_cli = {}
+    while rest_cli:
+        w_cli = rest_cli.pop()
+        if w_cli in matches_cli:
+            raise Exception("Palavra já casada restando")
+        match_cli: Match = Match()
+        for w_cad in lis_cad:
+            match_cad: Match = matches_cad.get(w_cad, None)
+            pcc = log_prob_wcli_given_wcad(w_cli, w_cad)
+            if pcc > match_cli.log_prob_cli_given_cad and (not match_cad or pcc > match_cad.log_prob_cli_given_cad):
+
+                if match_cli.other_word:
+                    matches_cad.pop(match_cli.other_word)
+
+                match_cli.log_prob_cli_given_cad = pcc
+                match_cli.other_word = w_cad
+                if not match_cad:
+                    match_cad: Match = Match()
+                else:
+                    matches_cli.pop(match_cad.other_word)
+                    rest_cli.add(match_cad.other_word)
+                    matches_cad.pop(w_cad)
+
+
+
+                match_cad.other_word = w_cli
+                match_cad.log_prob_cli_given_cad = pcc
+                matches_cli[w_cli] = match_cli
+                matches_cad[w_cad] = match_cad
+                print(match_cli, " <-> ", match_cad)
+
+    if len(matches_cli) != len(matches_cad):
+        raise Exception("Número de matches incompatível")
+
+    sum_match = 0.0
+    sum_nomatch = 0.0
+
+    for i in range(len(lis_cli)):
+        w_cli = lis_cli[i]
+        log_prob_cli = math.log(await probWordIncludingWrongFields(cache, campo, w_cli))
+        log_probs_cli[w_cli] = MissCost(w_cli, log_prob_cli, i)
+        sum_nomatch += log_prob_cli
+
+    for i in range(len(lis_cad)):
+        w_cad = lis_cad[i]
+        log_prob_cad = math.log(await probWordIncludingWrongFields(cache, campo, w_cad))
+        log_probs_cad[w_cad] = MissCost(w_cad, log_prob_cad, i)
+
+    cli_possible_miss_costs = []
+    cli_possible_miss_costs.extend(log_probs_cli.values())
+    cad_possible_miss_costs = []
+    cad_possible_miss_costs.extend(log_probs_cad.values())
+
+    cli_possible_miss_costs.sort()
+    cad_possible_miss_costs.sort()
+    for i in range(len(cli_possible_miss_costs)):
+        cli_possible_miss_costs[i].position = i
+    for i in range(len(cad_possible_miss_costs)):
+        cad_possible_miss_costs[i].position = i
+
+
+    for w_cli, match_cli in matches_cli.items():
+        match_cad: Match = matches_cad[match_cli.other_word]
+        if match_cad.log_prob_cli_given_cad != match_cli.log_prob_cli_given_cad:
+            raise Exception("matches incompatíveis")
+        w_cad = match_cli.other_word
+        cli_miss = log_probs_cli[w_cli]
+        cad_miss = log_probs_cad[w_cad]
+        log_prob_miss_cli = cli_miss.log_prob_miss_cli()
+        log_prob_miss_cad = cad_miss.log_prob_miss_cad()
+        log_prob_miss = log_prob_miss_cad + log_prob_miss_cli
+
+        if log_prob_miss > match_cli.log_prob_cli_given_cad:
+            sum_match += log_prob_miss
+        else:
+            sum_match += match_cli.log_prob_cli_given_cad
+
+    for w_cli in lis_cli:
+        if w_cli not in matches_cli:
+            cli_miss = log_probs_cli[w_cli]
+            log_prob_miss_cli = cli_miss.log_prob_miss_cli()
+            sum_match += log_prob_miss_cli
+
+    for w_cad in lis_cad:
+        if w_cad not in matches_cad:
+            cad_miss = log_probs_cad[w_cad]
+            log_prob_miss_cad = cad_miss.log_prob_miss_cad()
+            sum_match += log_prob_miss_cad
+
+    log_ratio = sum_match - sum_nomatch
+    ratio = math.exp(log_ratio)
+
+    prob_is_match = ratio / (1.0+ratio)
+
+    print(prob_is_match)
+
+    return prob_is_match > threshold
+
+
+
+
+#isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float=0.9)
+
+async def isApproxFieldWithProbWhenNeeded(nome:str, ie: InfraElement, nivel: int, threshold:float=0.9):
+    cache: LRUCacheWordCount = getWordCountCache()
+    fieldName = getFieldNameByLevel(nivel)
+    useApprox = fieldName == "logradouro" or fieldName == "bairro"
+    lnome = nome.lower()
+    best_pmatch = 0
+    for fn in ie.addressLevelValues:
+        n = fn.split("/")[-1]
+        if useApprox:
+            pmatch =  await isApproxFieldProb(cache, nome, n.lower(), fieldName, threshold)
+            #pmatch = calc_pmatch(lnome, n.lower())
+        else:
+            pmatch = 1.0 if lnome == n.lower() else 0.0
+
+        if pmatch > best_pmatch:
+            best_pmatch = pmatch
+
+    return best_pmatch > threshold
+
+
 async def isApproxField(nome:str, ie: InfraElement, nivel: int, threshold:float=0.9):
     fieldName = getFieldNameByLevel(nivel)
     useApprox = fieldName == "logradouro" or fieldName == "bairro"
@@ -498,7 +718,26 @@ async def isApproxAddr(endereco:Endereco, eid:FAMongoId, threshold):
         ie: InfraElement = await getInfraElement(str(eids[i]))
         nome = endereco.getFieldValueByLevel(i)
         if nome:
-            ia = await isApproxField(nome, ie, i, threshold)
+            ia = await isApproxFieldWithProbWhenNeeded(nome, ie, i, threshold)
             if not ia:
                 return False
     return True
+
+
+wordCountCache: LRUCacheWordCount
+def getWordCountCache():
+    global wordCountCache
+    if wordCountCache is None:
+        mdb = getBotMongoDB()
+        cwr:CountWordsResult = CountWordsResult()
+        wordCountCache = LRUCacheWordCount(mdb, "StreetWordCount", cwr, 10000)
+    return wordCountCache
+
+
+if __name__ == "__main__":
+    loop = asyncio.new_event_loop()
+    #loop = asyncio.get_event_loop()
+    asyncio.set_event_loop(loop)
+
+    #loop.run_until_complete(isApproxFieldProb(wordCountCache, "Preca Alfa Centouro", "Praça Alpha de Centauro (centro de apoio2)", "logradouro", 0.9))
+    loop.run_until_complete(isApproxFieldProb(getWordCountCache(), "Centauro", "Praça Alpha de Centauro (centro de apoio2)", "logradouro", 0.9))

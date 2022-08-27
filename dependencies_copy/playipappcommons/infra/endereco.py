@@ -16,6 +16,9 @@ def getFieldNameByLevel(level:int):
         level = len(address_level_fields) - 1
     return address_level_fields[level]
 
+def getFieldLevelByName(name:str):
+    return address_level_fields.index(name)
+
 # address_levels_up = {
 #     "root": None,
 #     "uf": "root",
