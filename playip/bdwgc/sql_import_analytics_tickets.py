@@ -76,7 +76,7 @@ sql_analytics_tickets = """
                 LEFT JOIN StatusContrato as StatusContrato on (StatusContrato.ID_STATUS_CONTRATO=Contrato.ID_STATUS_CONTRATO) 
 
             WHERE
-                tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM'
+                tprod.TX_DESCRICAO_TIPO = 'internet'  and ser.NM_SERVICO like '%SCM' and cps.ID_CONTRATO='13000'
             ORDER BY 
                 UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO,
                 SERVICO_DT_ATIVACAO, ID_CONTRATO_PACOTESERVICO_SERVICO, Ticket.DT_ABERTURA 
