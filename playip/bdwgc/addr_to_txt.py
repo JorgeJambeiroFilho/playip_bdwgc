@@ -1,4 +1,5 @@
 import pyodbc
+from dynaconf import settings
 
 server = settings.SERVER
 database = settings.DATABASE
