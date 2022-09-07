@@ -49,7 +49,7 @@ sql_analytics_tickets = """
                 Contrato_PacoteServico_Servico as cps 
                 INNER JOIN Contrato as contrato on (cps.ID_CONTRATO=contrato.ID_CONTRATO)
                 INNER JOIN PacoteServico as ps on (cps.ID_PACOTE_SERVICO=ps.ID_PACOTE_SERVICO) 
-                INNER JOIN PacoteServico_Servico as s on (cps.ID_PACOTE_SERVICO=s.ID_PACOTE_SERVICO and cps.ID_SERVICO=s.ID_SERVICO)
+                INNER JOIN PacoteServico_Servico as s on (ps.ID_PACOTE_SERVICO=s.ID_PACOTE_SERVICO)
                 INNER JOIN Servico as ser on (ser.ID_SERVICO=s.ID_SERVICO)  
                 INNER JOIN Servico_DICI as dici on (dici.ID_SERVICO=cps.ID_SERVICO)
                 INNER JOIN TiposDiversos as tmeio on (tmeio.ID_TIPO_DIVERSOS=dici.ID_TIPO_MEIO_ACESSO) 
