@@ -176,7 +176,7 @@ sql_analytics_tickets_old = """
         """
 
 
-sql_analytics_tickets = """
+sql_analytics_tickets_test = """
             SELECT  
 
                 cps.ID_CONTRATO_PACOTESERVICO_SERVICO as ID_CONTRATO_PACOTESERVICO_SERVICO,
