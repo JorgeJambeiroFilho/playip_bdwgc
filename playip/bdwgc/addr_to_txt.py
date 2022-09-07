@@ -1,9 +1,10 @@
 import pyodbc
 
-server = '170.238.84.12'
-database = 'WGC'
-username = 'wgcplayip'
-password = 'teste01*'
+server = settings.SERVER
+database = settings.DATABASE
+username = settings.USERNAME
+password = settings.PASSWORD
+
 cnxn = pyodbc.connect(
     'DRIVER={ODBC Driver 17 for SQL Server};SERVER=' + server + ';DATABASE=' + database + ';UID=' + username + ';PWD=' + password)
 cursor = cnxn.cursor()
