@@ -43,8 +43,7 @@ sql_analytics_tickets = """
                 Cidade.TX_NOME_LOCALIDADE as cidade,UF.ID_UF as id_uf, UF.NM_UF as uf,
 
                 StatusContrato.NM_STATUS_CONTRATO as STATUS_CONTRATO,
-                s.ID_SERVICO
-
+                s.ID_SERVICO, cps.ID_SERVICO
             FROM 
                 Contrato_PacoteServico_Servico as cps 
                 INNER JOIN Contrato as contrato on (cps.ID_CONTRATO=contrato.ID_CONTRATO)
