@@ -74,7 +74,29 @@ def createIndex_UserClients_TimeId(mdb):
     print("Created UserClients indexes if necessary")
 
 
-def createIndex_analytics(mdb, anatabname):
+def createIndex_NonProcessedAddresses(mdb, npendtabname):
+    mdb[anatabname].create_index(
+        [
+            ("logradouro", pymongo.ASCENDING),
+            ("numero", pymongo.ASCENDING),
+            ("complemento", pymongo.ASCENDING),
+            ("bairro", pymongo.ASCENDING),
+            ("cep", pymongo.ASCENDING),
+            ("condominio", pymongo.ASCENDING),
+            ("cidade", pymongo.ASCENDING),
+            ("uf", pymongo.ASCENDING),
+        ],
+        background=False, name="end_parts"
+    )
+    mdb[anatabname].create_index(
+        [
+            ("timestamp", pymongo.ASCENDING)
+        ],
+        background=False, name="end_time"
+    )
+    print("Created non processed addresses indexes if necessary")
+
+def createIndex_Addresses(mdb, anatabname):
     mdb[anatabname].create_index(
         [
             ("infraElementId", pymongo.ASCENDING),
@@ -99,6 +121,7 @@ def getBotMongoDB():
         createIndex_ChatHistory_TimeId(playIPChatHelperDB)
         createIndex_UserClients_TimeId(playIPChatHelperDB)
         #createIndex_analytics(playIPChatHelperDB, "ISPContextMetrics")
+        createIndex_NonProcessedAddresses(playIPChatHelperDB, "addresses")
     return playIPChatHelperDB
 
 def closeBotMongoDb():

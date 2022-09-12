@@ -4,15 +4,11 @@ import pydantic
 from bson import ObjectId
 from pydantic import Field
 
+from playipappcommons.basictaskcontrolstructure import BasicTaskControlStructure
 from playipappcommons.famongo import FAMongoId
 from playipappcommons.util.LRUCache import LRUCache
 
-class CountWordsResult(pydantic.BaseModel):
-    fail: bool = False
-    complete: bool = False
-    started: bool = False
-    message: str = "ok"
-    aborted: bool = False
+class CountWordsResult(BasicTaskControlStructure):
 
     num_processed: int = 0
     num_fails: int = 0

@@ -5,17 +5,13 @@ import pydantic
 from bson import ObjectId
 from pydantic import Field
 
+from playipappcommons.basictaskcontrolstructure import BasicTaskControlStructure
 from playipappcommons.famongo import FAMongoId
 from playipappcommons.infra.endereco import Endereco
 
 
-class ImportAnalyticDataResult(pydantic.BaseModel):
-    fail: bool = False
-    complete: bool = False
-    started: bool = False
-    message: str = "ok"
-    num_processed: int = 0
-    num_fails: int = 0
+class ImportAnalyticDataResult(BasicTaskControlStructure):
+
     num_sem_data_inicio: int = 0
     num_enderecos_nao_reconhecidos: int = 0
 

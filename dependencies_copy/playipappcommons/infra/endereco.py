@@ -1,6 +1,11 @@
+import time
 from typing import Optional
 
 import pydantic
+from bson import ObjectId
+from pydantic import Field
+
+from playipappcommons.famongo import FAMongoId
 
 address_level_fields = [ "root", "prefix", "uf", "cidade", "bairro", "logradouro", "numero", "complemento"]
 
@@ -30,6 +35,7 @@ def getFieldLevelByName(name:str):
 
 
 
+
 class Endereco(pydantic.BaseModel):
     logradouro: Optional[str]
     numero: Optional[str]
@@ -40,7 +46,6 @@ class Endereco(pydantic.BaseModel):
     cidade: Optional[str]
     uf: Optional[str]
     prefix: Optional[str]
-
     def setFieldValueByLevel(self, level:int, value:str):
         fn: str = getFieldNameByLevel(level)
         setattr(self, fn, value)
@@ -59,6 +64,24 @@ class Endereco(pydantic.BaseModel):
                + self.cidade + "-" + self.uf + ". " + \
                ("CEP " + self.cep + "." if self.cep else "") + \
                ("Prefix" + self.prefix + "." if self.prefix else "")
+
+class SavedAddress(Endereco):
+    id: Optional[FAMongoId] = Field(alias='_id')
+    timestamp: Optional[float] = None
+    mediaNetwork: str
+
+    def __init__(self, *args, **kargs):
+        super().__init__(*args, **kargs)
+        if not self.id:
+            self.id = ObjectId()
+        if not self.timestamp:
+            self.timestamp = time.time()
+
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {
+            ObjectId: str
+        }
 
 
 def buildFullImportName(endereco: Endereco, nivel: int = -1):

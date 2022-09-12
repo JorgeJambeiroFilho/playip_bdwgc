@@ -1,21 +1,38 @@
 from typing import List, Optional
 
 import pydantic
+import pymongo
+from bson import ObjectId
+
+from playipappcommons.basictaskcontrolstructure import BasicTaskControlStructure
+from playipappcommons.famongo import FAMongoId
+from playipappcommons.infra.endereco import Endereco, increase_address_level, getFieldNameByLevel, buildFullImportName, \
+    SavedAddress
+from playipappcommons.infra.inframethods import getChildren, createInfraElement, getInfraRoot, \
+    getInfraElementAddressHier, getInfraElement, findApprox
+from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
+from playipappcommons.playipchatmongo import getBotMongoDB
+from playipappcommons.util.levenshtein import levenshteinDistanceDP
+from typing import List, Optional
+
+import pydantic
 from bson import ObjectId
 
 from playipappcommons.famongo import FAMongoId
-from playipappcommons.infra.endereco import Endereco, increase_address_level, getFieldNameByLevel, buildFullImportName
+from playipappcommons.infra.endereco import Endereco, increase_address_level, getFieldNameByLevel, buildFullImportName, \
+    SavedAddress
 from playipappcommons.infra.inframethods import getChildren, createInfraElement, getInfraRoot, \
     getInfraElementAddressHier, getInfraElement, findApprox
 from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
 from playipappcommons.playipchatmongo import getBotMongoDB
 from playipappcommons.util.levenshtein import levenshteinDistanceDP
 
+class ImportAddressResult(BasicTaskControlStructure):
+    num_new: int = 0
 
-class ImportAddressResult(pydantic.BaseModel):
-    fail: bool = False
-    complete: bool = False
-    message: str = "ok"
+class ProcessAddressResult(BasicTaskControlStructure):
+
+
     num_bairros: int = 0
     num_cidades: int = 0
     num_condominios: int = 0
@@ -34,10 +51,9 @@ class ImportAddressResult(pydantic.BaseModel):
     num_alt_ufs: int = 0
     num_alt_prefixs: int = 0
 
-    last_id_endereco: int = 0
+    #last_id_endereco: int = 0
 
-    num_processed: int = 0
-
+    timestamp: float = 0.0
 
 
 
@@ -100,7 +116,68 @@ async def findAddress(mdb, endereco: Endereco) -> Optional[InfraElement]:
     return await importOrFindAddress(mdb, None, None, endereco, doImport=False)
 
 
-async def importOrFindAddress(mdb, importResult: Optional[ImportAddressResult], importExecUID:Optional[str], endereco: Endereco, nivel: int = -1, doImport: bool = True) -> Optional[InfraElement]:
+async def importAddressWithoutProcessing(mdb, importResult: Optional[ImportAddressResult], importExecUID, endereco: Endereco, mediaNetwork:str):
+    if endereco.uf is None or endereco.cidade is None or endereco.bairro is None or endereco.logradouro is None:
+        return None
+    endDict = endereco.dict(by_alias=True)
+    del endDict["prefix"]
+    endDict["mediaNetwork"] = mediaNetwork
+    r = await mdb.addresses.find_one(endDict)
+    if not r:
+        savedAddr = SavedAddress(**endDict)
+        await mdb.addresses.insert(savedAddr)
+        importResult.num_new += 1
+    importResult.num_processed += 1
+
+async def getProcessNewAddressResultIntern(mdb, begin:bool) -> ProcessAddressResult:
+    resDict = await mdb.control.find_one({"key":"ProcessNewAddresses"})
+    if resDict is None:
+        res = ProcessAddressResult()
+        res.complete = True
+    else:
+        res: ProcessAddressResult = ProcessAddressResult(**resDict)
+    if res.complete and begin:
+        #res = ProcessAddressResult()
+        # continua de onde havia parado
+        res.complete = False
+        res.aborted = False
+        await setProcessAddressResult(mdb, res)
+
+    return res
+
+async def setProcessAddressResult(mdb, par:ProcessAddressResult):
+    resDict = par.dict(by_alias=True)
+    resDict["key"] = "ProcessNewAddresses"
+    await mdb.control.replace_one({"key": "ProcessNewAddresses"}, resDict, upsert=True)
+
+async def processNewAddressesIntern(mdb, importExecUID: Optional[str]):
+    par: ProcessAddressResult =  await getProcessNewAddressResultIntern(mdb, True)
+    cursor = mdb.addresses.find({"timestamp" : {"$gt":par.timestamp}}).sort([("timestamp", pymongo.ASCENDING)])
+    async for savedAddress in cursor:
+
+        par2: ProcessAddressResult = await getProcessNewAddressResultIntern(mdb, False)
+        if par2.aborted:
+            par.complete = True
+            par.aborted = True
+            await setProcessAddressResult(mdb, par)
+            return par
+
+        await addPrefixAndImportOrFindAddress(mdb, par, importExecUID, savedAddress.endereco, savedAddress.mediaNetwork)
+        par.timestamp = savedAddress.timestamp
+        await setProcessAddressResult(mdb, par)
+    return par
+
+async def addPrefixAndImportOrFindAddress(mdb, importResult: Optional[ProcessAddressResult], importExecUID:Optional[str], endereco: Endereco, mediaNetwork:str):
+
+    endDict = endereco.dict(by_alias=True)
+    for prefix in  ["Infraestrutura-" + mediaNetwork, "Comercial"]:
+        endDict["prefix"] = prefix
+        enderecoWithPrefix: Endereco = Endereco(**endDict)
+        await importOrFindAddress(mdb, importResult, importExecUID, enderecoWithPrefix)
+        importResult.num_processed += 1
+
+
+async def importOrFindAddress(mdb, importResult: Optional[ProcessAddressResult], importExecUID:Optional[str], endereco: Endereco, nivel: int = -1, doImport: bool = True) -> Optional[InfraElement]:
     if endereco.uf is None or endereco.cidade is None or endereco.bairro is None or endereco.logradouro is None:
         return None
     if nivel == 0:

@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends
 from playip.bdwgc.bdwgc import getWDB
 from playipappcommons.auth.oauth2FastAPI import infrapermissiondep
 from playipappcommons.infra.endereco import Endereco
-from playipappcommons.infra.infraimportmethods import ImportAddressResult, importOrFindAddress
+from playipappcommons.infra.infraimportmethods import ProcessAddressResult, importOrFindAddress, ImportAddressResult, \
+    importAddressWithoutProcessing
 from playipappcommons.playipchatmongo import getBotMongoDB
 
 importrouter = APIRouter(prefix="/playipispbd/import")
@@ -24,30 +25,43 @@ def cf(s):
 #curl -X 'GET' 'http://app.playip.com.br/playipchathelper/infra/clear' -H 'accept: application/json'
 #curl -X 'GET' 'http://app.playip.com.br/playipchathelper/infra/failsclear' -H 'accept: application/json'
 
-onGoingImportAddressResult: ImportAddressResult = None
+async def getImportAddressResultIntern(mdb, begin:bool) -> ImportAddressResult:
+    resDict = await mdb.control.find_one({"key":"ImportAddresses"})
+    if resDict is None:
+        res = ImportAddressResult()
+        res.complete = True
+    else:
+        res: ImportAddressResult = ImportAddressResult(**resDict)
+    if res.complete and begin:
+        # Recomeça, pois não há um controle que permita continuar
+        # Pode recomeçar porque as operações são idempotentes
+        res = ImportAddressResult()
+        await setImportAddressResult(mdb, res)
+    return res
+
+async def setImportAddressResult(mdb, par:ImportAddressResult):
+    resDict = par.dict(by_alias=True)
+    resDict["key"] = "ImportAddresses"
+    await mdb.control.replace_one({"key": "ImportAddresses"}, resDict, upsert=True)
 
 @importrouter.get("/importaddresses", response_model=ImportAddressResult)
 async def importAddresses(auth=Depends(infrapermissiondep)) -> ImportAddressResult:
-    global onGoingImportAddressResult
-    if onGoingImportAddressResult is None or onGoingImportAddressResult.complete:
-        onGoingImportAddressResult = ImportAddressResult()
+    mdb = getBotMongoDB()
+    onGoingImportAddressResult: ImportAddressResult = await getImportAddressResultIntern(mdb, True)
+    if not onGoingImportAddressResult.started:
         asyncio.create_task(importAddressesIntern())
     return onGoingImportAddressResult
 
-@importrouter.get("/getimportaddressesresult", response_model=ImportAddressResult)
+@importrouter.get("/getimportaddressesresult", response_model=ProcessAddressResult)
 async def getImportAddressesResult(auth=Depends(infrapermissiondep)) -> ImportAddressResult:
-    global onGoingImportAddressResult
-    if onGoingImportAddressResult is None:
-        onGoingImportAddressResult = ImportAddressResult()
-        onGoingImportAddressResult.complete = True
-    return onGoingImportAddressResult
+    mdb = getBotMongoDB()
+    return await getImportAddressResultIntern(mdb, False)
 
 
-async def importAddressesIntern() -> ImportAddressResult:
+async def importAddressesIntern():
     mdb = getBotMongoDB()
     wdb = await getWDB()
-    global onGoingImportAddressResult
-    res: ImportAddressResult = onGoingImportAddressResult
+    iar: ImportAddressResult = await getImportAddressResultIntern(mdb, True)
     importExecUID: str = str(uuid.uuid1())
     time_ini = time.time()
 
@@ -76,6 +90,14 @@ async def importAddressesIntern() -> ImportAddressResult:
 
         row = cursor.fetchone()
         while row:
+
+            iar2: ImportAddressResult = await getImportAddressResultIntern(mdb, False)
+            if iar2.aborted:
+                iar.complete = True
+                iar.aborted = True
+                await setImportAddressResult(mdb, iar)
+                return
+
             logradouro: Optional[str] = cf(row[0])
             numero: Optional[str] = cf(row[1])
             complemento: Optional[str] = cf(row[2])
@@ -87,18 +109,47 @@ async def importAddressesIntern() -> ImportAddressResult:
             is_radio = row[10] == cf("radio")  # a outra opção no wgc é "fibra"
             medianetwork = "Rádio" if is_radio else "Cabo"
 
-            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf, prefix="Infraestrutura-"+medianetwork)
-            await importOrFindAddress(mdb, res, importExecUID, endereco)
-            res.num_processed += 1
+            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento,
+                                          bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf)
 
-            endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf, prefix="Comercial")
-            await importOrFindAddress(mdb, res, importExecUID, endereco)
-            res.num_processed += 1
+            await importAddressWithoutProcessing(mdb, iar, importExecUID, endereco, medianetwork)
+
+            # endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf, prefix="Infraestrutura-"+medianetwork)
+            # await importOrFindAddress(mdb, res, importExecUID, endereco)
+            # res.num_processed += 1
+            #
+            # endereco: Endereco = Endereco(logradouro=logradouro, numero=numero, complemento=complemento, bairro=bairro, cep=cep, condominio=condominio, cidade=cidade, uf=uf, prefix="Comercial")
+            # await importOrFindAddress(mdb, res, importExecUID, endereco)
+            # res.num_processed += 1
 
             row = cursor.fetchone()
 
     time_end = time.time()
-    res.complete = True
+    iar.complete = True
     print("Tempo de importação ", time_end - time_ini)
-    print(res)
-    return res
+    print(iar)
+
+
+@importrouter.get("/stopimportddresses", response_model=ImportAddressResult)
+async def stopImportAddresses(auth=Depends(infrapermissiondep)) -> ImportAddressResult:
+    mdb = getBotMongoDB()
+    onGoingIar: ImportAddressResult = await getImportAddressResultIntern(mdb, False)
+    if onGoingIar.started:
+        onGoingIar.aborted = True
+    mdb = getBotMongoDB()
+    await setImportAddressResult(mdb, onGoingIar)
+    return onGoingIar
+
+
+@importrouter.get("/clearimportaddresses", response_model=ImportAddressResult)
+async def clearImportAddresses(auth=Depends(infrapermissiondep)) -> ImportAddressResult:
+    mdb = getBotMongoDB()
+    onGoingPar: ImportAddressResult = await getImportAddressResultIntern(mdb, False)
+    if onGoingPar.started:
+        onGoingPar.message = "CannotClearRunningProcess"
+    else:
+        # faz começar do zero, mas esse processo sempre volta para o zero quando para, lago essa operação
+        # está aqui só para manter a analogia com outros semelhantes, mas que nem sempre recomeçam
+        onGoingPar = ImportAddressResult()
+        await setImportAddressResult(mdb, onGoingPar)
+    return onGoingPar
