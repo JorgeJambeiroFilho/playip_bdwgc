@@ -39,9 +39,10 @@ async def getImportAddressResultIntern(mdb, begin:bool) -> ImportAddressResult:
         await setImportAddressResult(mdb, res)
     return res
 
-async def setImportAddressResult(mdb, par:ImportAddressResult):
-    resDict = par.dict(by_alias=True)
+async def setImportAddressResult(mdb, iar:ImportAddressResult):
+    resDict = iar.dict(by_alias=True)
     resDict["key"] = "ImportAddresses"
+    iar.last_action = time.time()
     await mdb.control.replace_one({"key": "ImportAddresses"}, resDict, upsert=True)
 
 @importrouter.get("/importaddresses", response_model=ImportAddressResult)
