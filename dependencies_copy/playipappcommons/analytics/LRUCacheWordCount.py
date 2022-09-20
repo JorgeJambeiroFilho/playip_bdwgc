@@ -4,19 +4,35 @@ import pydantic
 from bson import ObjectId
 from pydantic import Field
 
-from playipappcommons.basictaskcontrolstructure import BasicTaskControlStructure
+from playipappcommons.basictaskcontrolstructure import BasicTaskControlStructure, registerTaskControlStructureFactory
 from playipappcommons.famongo import FAMongoId
 from playipappcommons.util.LRUCache import LRUCache
 
-class CountWordsResult(BasicTaskControlStructure):
+cwr_key: str = "CountWordsResult"
 
-    num_processed: int = 0
+class CountWordsResult(BasicTaskControlStructure):
+    key: str = cwr_key
     num_fails: int = 0
 
     num_updates: int = 0
     num_creations: int = 0
     num_cache_hits: int = 0
 
+    def clear(self):
+        super().clear()
+
+        self.num_fails: int = 0
+
+        self.num_updates: int = 0
+        self.num_creations: int = 0
+        self.num_cache_hits: int = 0
+
+
+def createCountWordsResult(json):
+    return CountWordsResult(**json)
+
+
+registerTaskControlStructureFactory(cwr_key, createCountWordsResult)
 
 class WordFreq(pydantic.BaseModel):
     id: Optional[FAMongoId] = Field(alias='_id')

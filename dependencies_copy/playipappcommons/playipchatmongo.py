@@ -75,7 +75,7 @@ def createIndex_UserClients_TimeId(mdb):
 
 
 def createIndex_NonProcessedAddresses(mdb, npendtabname):
-    mdb[anatabname].create_index(
+    mdb[npendtabname].create_index(
         [
             ("logradouro", pymongo.ASCENDING),
             ("numero", pymongo.ASCENDING),
@@ -88,7 +88,7 @@ def createIndex_NonProcessedAddresses(mdb, npendtabname):
         ],
         background=False, name="end_parts"
     )
-    mdb[anatabname].create_index(
+    mdb[npendtabname].create_index(
         [
             ("timestamp", pymongo.ASCENDING)
         ],
@@ -97,6 +97,20 @@ def createIndex_NonProcessedAddresses(mdb, npendtabname):
     print("Created non processed addresses indexes if necessary")
 
 def createIndex_Addresses(mdb, anatabname):
+    mdb[anatabname].create_index(
+        [
+            ("infraElementId", pymongo.ASCENDING),
+            ("infraElementOptic", pymongo.ASCENDING),
+            ("fullProductName", pymongo.ASCENDING),
+            ("event_type", pymongo.DESCENDING),
+            ("metric_name", pymongo.ASCENDING),
+            ("period_group", pymongo.ASCENDING),
+        ],
+        background=False, name="eid_optc_fpn_eventtype_metricname_periodgroup"
+    )
+    print("Created Analytics indexes if necessary")
+
+def createIndex_analytics(mdb, anatabname):
     mdb[anatabname].create_index(
         [
             ("infraElementId", pymongo.ASCENDING),

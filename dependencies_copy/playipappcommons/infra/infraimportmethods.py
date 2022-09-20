@@ -1,10 +1,13 @@
-from typing import List, Optional
+import time
+import uuid
+from typing import List, Optional, cast
 
 import pydantic
 import pymongo
 from bson import ObjectId
 
-from playipappcommons.basictaskcontrolstructure import BasicTaskControlStructure
+from playipappcommons.basictaskcontrolstructure import BasicTaskControlStructure, registerTaskControlStructureFactory, \
+    getControlStructure
 from playipappcommons.famongo import FAMongoId
 from playipappcommons.infra.endereco import Endereco, increase_address_level, getFieldNameByLevel, buildFullImportName, \
     SavedAddress
@@ -27,11 +30,24 @@ from playipappcommons.infra.inframodels import InfraElement, AddressQuery, Addre
 from playipappcommons.playipchatmongo import getBotMongoDB
 from playipappcommons.util.levenshtein import levenshteinDistanceDP
 
+iar_key: str = "ImportAddresses"
 class ImportAddressResult(BasicTaskControlStructure):
+    key:str = iar_key
     num_new: int = 0
+
+
+def createImportAddressResult(json):
+    return ImportAddressResult(**json)
+
+
+registerTaskControlStructureFactory(iar_key, createImportAddressResult)
+
+
+par_key: str = "ProcessNewAddresses"
 
 class ProcessAddressResult(BasicTaskControlStructure):
 
+    key: str = par_key
 
     num_bairros: int = 0
     num_cidades: int = 0
@@ -55,6 +71,36 @@ class ProcessAddressResult(BasicTaskControlStructure):
 
     timestamp: float = 0.0
 
+    def clear(self):
+        super().clear()
+
+        self.num_bairros: int = 0
+        self.num_cidades: int = 0
+        self.num_condominios: int = 0
+        self.num_logradouros: int = 0
+        self.num_numeros: int = 0
+        self.num_complementos: int = 0
+        self.num_ufs: int = 0
+        self.num_prefixs: int = 0 #o erro ortográfico tem que ser mantido por enquanto, pois há um acesso dinâmico que falharia
+
+        self.num_alt_bairros: int = 0
+        self.num_alt_cidades: int = 0
+        self.num_alt_condominios: int = 0
+        self.num_alt_logradouros: int = 0
+        self.num_alt_numeros: int = 0
+        self.num_alt_complementos: int = 0
+        self.num_alt_ufs: int = 0
+        self.num_alt_prefixs: int = 0
+
+        #self.last_id_endereco: int = 0
+
+        self.timestamp: float = 0.0
+
+def createProcessAddressResult(json):
+    return ProcessAddressResult(**json)
+
+
+registerTaskControlStructureFactory(par_key, createProcessAddressResult)
 
 
 async def getInfraElementByFullImportName(mdb, fullName:str) -> InfraElement:
@@ -129,43 +175,6 @@ async def importAddressWithoutProcessing(mdb, importResult: Optional[ImportAddre
         importResult.num_new += 1
     importResult.num_processed += 1
 
-async def getProcessNewAddressResultIntern(mdb, begin:bool) -> ProcessAddressResult:
-    resDict = await mdb.control.find_one({"key":"ProcessNewAddresses"})
-    if resDict is None:
-        res = ProcessAddressResult()
-        res.complete = True
-    else:
-        res: ProcessAddressResult = ProcessAddressResult(**resDict)
-    if res.complete and begin:
-        #res = ProcessAddressResult()
-        # continua de onde havia parado
-        res.complete = False
-        res.aborted = False
-        await setProcessAddressResult(mdb, res)
-
-    return res
-
-async def setProcessAddressResult(mdb, par:ProcessAddressResult):
-    resDict = par.dict(by_alias=True)
-    resDict["key"] = "ProcessNewAddresses"
-    await mdb.control.replace_one({"key": "ProcessNewAddresses"}, resDict, upsert=True)
-
-async def processNewAddressesIntern(mdb, importExecUID: Optional[str]):
-    par: ProcessAddressResult =  await getProcessNewAddressResultIntern(mdb, True)
-    cursor = mdb.addresses.find({"timestamp" : {"$gt":par.timestamp}}).sort([("timestamp", pymongo.ASCENDING)])
-    async for savedAddress in cursor:
-
-        par2: ProcessAddressResult = await getProcessNewAddressResultIntern(mdb, False)
-        if par2.aborted:
-            par.complete = True
-            par.aborted = True
-            await setProcessAddressResult(mdb, par)
-            return par
-
-        await addPrefixAndImportOrFindAddress(mdb, par, importExecUID, savedAddress.endereco, savedAddress.mediaNetwork)
-        par.timestamp = savedAddress.timestamp
-        await setProcessAddressResult(mdb, par)
-    return par
 
 async def addPrefixAndImportOrFindAddress(mdb, importResult: Optional[ProcessAddressResult], importExecUID:Optional[str], endereco: Endereco, mediaNetwork:str):
 
@@ -255,3 +264,24 @@ async def importOrFindAddress(mdb, importResult: Optional[ProcessAddressResult],
     return infraElement
 
 
+async def getProcessNewAddressResultIntern(mdb, begin:bool) -> ProcessAddressResult:
+    return cast(await getControlStructure(mdb, par_key, begin), ProcessAddressResult)
+
+
+async def processNewAddressesIntern(mdb, par: ProcessAddressResult):
+    importExecUID: str = str(uuid.uuid1())
+
+    cursor = mdb.addresses.find({"timestamp" : {"$gt":par.timestamp}}).sort([("timestamp", pymongo.ASCENDING)])
+    async for savedAddress in cursor:
+
+        par2: ProcessAddressResult = await getProcessNewAddressResultIntern(mdb, False)
+        if par2.isAborted():
+            par.abort()
+            par.done()
+            await par.save()
+            return par
+
+        await addPrefixAndImportOrFindAddress(mdb, par, importExecUID, savedAddress.endereco, savedAddress.mediaNetwork)
+        par.timestamp = savedAddress.timestamp
+        await par.save(mdb)
+    return par
