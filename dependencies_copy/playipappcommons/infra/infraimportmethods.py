@@ -35,6 +35,10 @@ class ImportAddressResult(BasicTaskControlStructure):
     key:str = iar_key
     num_new: int = 0
 
+    def clearCounts(self):
+        super().clearCounts()
+        self.num_new = 0
+
 
 def createImportAddressResult(json):
     return ImportAddressResult(**json)
@@ -171,7 +175,7 @@ async def importAddressWithoutProcessing(mdb, importResult: Optional[ImportAddre
     r = await mdb.addresses.find_one(endDict)
     if not r:
         savedAddr = SavedAddress(**endDict)
-        await mdb.addresses.insert(savedAddr)
+        await mdb.addresses.insert_one(savedAddr.dict(by_alias=True))
         importResult.num_new += 1
     importResult.num_processed += 1
 
@@ -274,14 +278,10 @@ async def processNewAddressesIntern(mdb, par: ProcessAddressResult):
     cursor = mdb.addresses.find({"timestamp" : {"$gt":par.timestamp}}).sort([("timestamp", pymongo.ASCENDING)])
     async for savedAddress in cursor:
 
-        par2: ProcessAddressResult = await getProcessNewAddressResultIntern(mdb, False)
-        if par2.isAborted():
-            par.abort()
-            par.done()
-            await par.save()
-            return par
+        if await par.saveSoftly(mdb):
+            return
 
         await addPrefixAndImportOrFindAddress(mdb, par, importExecUID, savedAddress.endereco, savedAddress.mediaNetwork)
         par.timestamp = savedAddress.timestamp
-        await par.save(mdb)
+        await par.saveHardly(mdb)
     return par

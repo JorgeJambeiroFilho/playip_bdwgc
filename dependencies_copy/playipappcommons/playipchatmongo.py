@@ -148,7 +148,7 @@ def getMongoClient():
     if playIPChatMongoClient is None:
         try:
             print("GETMONGOCLIENT ",settings.MONGO_DB_HOST, settings.MONGO_DB_PORT)
-            playIPChatMongoClient = motor.motor_asyncio.AsyncIOMotorClient(settings.MONGO_DB_HOST, settings.MONGO_DB_PORT, connect=False) #, username=settings.MONGO_DB_USER, password=settings.MONGO_DB_PASSWORD
+            playIPChatMongoClient = motor.motor_asyncio.AsyncIOMotorClient(settings.MONGO_DB_HOST, settings.MONGO_DB_PORT, connect=False, directConnection=True) #, username=settings.MONGO_DB_USER, password=settings.MONGO_DB_PASSWORD
             wc_majority = WriteConcern("majority", wtimeout=1000)
             print("GOTMONGOCLIENT ", settings.MONGO_DB_HOST, settings.MONGO_DB_PORT)
         except:
