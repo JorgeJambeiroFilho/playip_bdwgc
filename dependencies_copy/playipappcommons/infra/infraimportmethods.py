@@ -269,19 +269,24 @@ async def importOrFindAddress(mdb, importResult: Optional[ProcessAddressResult],
 
 
 async def getProcessNewAddressResultIntern(mdb, begin:bool) -> ProcessAddressResult:
-    return cast(await getControlStructure(mdb, par_key, begin), ProcessAddressResult)
+    return cast(ProcessAddressResult, await getControlStructure(mdb, par_key, begin))
 
 
 async def processNewAddressesIntern(mdb, par: ProcessAddressResult):
     importExecUID: str = str(uuid.uuid1())
 
     cursor = mdb.addresses.find({"timestamp" : {"$gt":par.timestamp}}).sort([("timestamp", pymongo.ASCENDING)])
-    async for savedAddress in cursor:
+    async for savedAddressDict in cursor:
+        savedAddress: SavedAddress = SavedAddress(**savedAddressDict)
 
         if await par.saveSoftly(mdb):
             return
 
-        await addPrefixAndImportOrFindAddress(mdb, par, importExecUID, savedAddress.endereco, savedAddress.mediaNetwork)
+        await addPrefixAndImportOrFindAddress(mdb, par, importExecUID, savedAddress, savedAddress.mediaNetwork)
         par.timestamp = savedAddress.timestamp
         await par.saveHardly(mdb)
+
+    par.done()
+    await par.saveHardly(mdb)
+
     return par
