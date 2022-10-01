@@ -27,8 +27,10 @@ cursor.execute("""
                     LEFT JOIN LOG_LOCALIDADE as Cidade on (Endereco.ID_CIDADE=Cidade.ID_LOCALIDADE)
                     LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
                     LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
+            GROUP BY
+                    UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO, tmeio.TX_DESCRICAO_TIPO, Endereco.TX_CEP as cep, Condominio.NM_CONDOMINIO as condominio
             ORDER BY 
-                    UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO
+                    UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO, tmeio.TX_DESCRICAO_TIPO, Endereco.TX_CEP as cep, Condominio.NM_CONDOMINIO as condominio
         """)
 columns = [column[0] for column in cursor.description]
 print(columns)
