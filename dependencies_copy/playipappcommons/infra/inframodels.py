@@ -85,6 +85,10 @@ class AddressFilter(pydantic.BaseModel):
             self.id = ObjectId()
 
 
+class InfraElementLevelName(pydantic.BaseModel):
+    name :str
+    timestamp: float
+
 class InfraElement(pydantic.BaseModel):
     id: Optional[FAMongoId] = Field(alias='_id')
     parentId: Optional[FAMongoId] # pai em termos de estrutura
@@ -95,11 +99,13 @@ class InfraElement(pydantic.BaseModel):
     message:str = ""
     dtInterrupcao: float = 0
     dtPrevisao: float = 0
-
+#
 
     parentAddressId: Optional[FAMongoId]  # pai em termos de endereco.
     addressLevel: Optional[int] = None # determina o campo de endereço responsavel pela passagem do pai para o presente nó. Veja Endereco.getFieldNameByLevel()
-    addressLevelValues: List[str] = []
+    addressLevelValues: List[str] # anteriomente os address level names eram string e se chamavam address level values. Entao, ao ler objetos antigos no banco, esse é o campo carregado. No contrutor, o campo addressLevelNames é preenchido
+    addressLevelNames: List[InfraElementLevelName] = []
+    maxAddressLevelNameTimestamp: float = 0
 
     # importKey: Optional[str] = None
     addressFullNames: List[str] = [] #um exemplo de um nome completo seria "SP/Itapevi/Jardim Santa Rita"
@@ -120,6 +126,9 @@ class InfraElement(pydantic.BaseModel):
         super().__init__(*args, **kargs)
         if not self.id:
             self.id = ObjectId()
+        for alv in self.addressLevelValues:
+            self.addressLevelNames.append(InfraElementLevelName(name=alv, timestamp=0.0))
+        self.addressLevelValues = []
 
     class Config:
         arbitrary_types_allowed = True

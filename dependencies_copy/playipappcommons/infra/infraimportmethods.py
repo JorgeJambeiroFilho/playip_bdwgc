@@ -13,7 +13,7 @@ from playipappcommons.infra.endereco import Endereco, increase_address_level, ge
     SavedAddress
 from playipappcommons.infra.inframethods import getChildren, createInfraElement, getInfraRoot, \
     getInfraElementAddressHier, getInfraElement, findApprox
-from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
+from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail, InfraElementLevelName
 from playipappcommons.playipchatmongo import getBotMongoDB
 from playipappcommons.util.levenshtein import levenshteinDistanceDP
 from typing import List, Optional
@@ -225,7 +225,9 @@ async def importOrFindAddress(mdb, importResult: Optional[ProcessAddressResult],
 
     if not infraElement:
         infraElement:InfraElement = await createInfraElement(str(parent.id), str(sparent.id), cname)
-        infraElement.addressLevelValues.append(cname)
+        alnt:float = time.time()
+        infraElement.addressLevelNames.append(InfraElementLevelName(name=cname, time=alnt))
+        infraElement.maxAddressLevelNameTimestamp = alnt
         infraElement.addressLevel = nivel
         infraElement.addressFullNames.append(fullName)
         infraElement.importExecUID = importExecUID
@@ -241,11 +243,13 @@ async def importOrFindAddress(mdb, importResult: Optional[ProcessAddressResult],
         if not infraElement.manuallyMoved:
             infraElement.parentId = sparent.id
         found = False
-        for cn in infraElement.addressLevelValues:
-            found = found or cn == cname
+        for aln in infraElement.addressLevelNames:
+            found = found or aln.name == cname
         changed = changed
         if not found:
-            infraElement.addressLevelValues.append(cname)
+            alnt: float = time.time()
+            infraElement.addressLevelNames.append(InfraElementLevelName(name=cname, time=alnt))
+            infraElement.maxAddressLevelNameTimestamp = alnt
             changed = True
 
         found = False
@@ -278,13 +282,11 @@ async def processNewAddressesIntern(mdb, par: ProcessAddressResult):
     cursor = mdb.addresses.find({"timestamp" : {"$gt":par.timestamp}}).sort([("timestamp", pymongo.ASCENDING)])
     async for savedAddressDict in cursor:
         savedAddress: SavedAddress = SavedAddress(**savedAddressDict)
-
+        await addPrefixAndImportOrFindAddress(mdb, par, importExecUID, savedAddress, savedAddress.mediaNetwork)
+        par.timestamp = savedAddress.timestamp
         if await par.saveSoftly(mdb):
             return
 
-        await addPrefixAndImportOrFindAddress(mdb, par, importExecUID, savedAddress, savedAddress.mediaNetwork)
-        par.timestamp = savedAddress.timestamp
-        await par.saveHardly(mdb)
 
     par.done()
     await par.saveHardly(mdb)

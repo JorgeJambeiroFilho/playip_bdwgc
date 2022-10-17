@@ -8,7 +8,7 @@ from bson import ObjectId
 from playipappcommons.analytics.LRUCacheWordCount import LRUCacheWordCount, CountWordsResult, WordFreq
 from playipappcommons.famongo import FAMongoId
 from playipappcommons.infra.endereco import getFieldNameByLevel, Endereco, address_level_fields
-from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail
+from playipappcommons.infra.inframodels import InfraElement, AddressQuery, AddressInFail, InfraElementLevelName
 from playipappcommons.playipchatmongo import getBotMongoDB, getMongoClient
 from playipappcommons.util.levenshtein import levenshteinDistanceDP
 
@@ -460,7 +460,8 @@ def findApprox(nome:str, subs: List[InfraElement], nivel: int):
     best:InfraElement = None
     best_pmatch = 0
     for sub in subs:
-        for fn in sub.addressLevelValues:
+        for aln in sub.addressLevelNames:
+            fn = aln.name
             n = fn.split("/")[-1]
             if useApprox:
                 pmatch = calc_pmatch(lnome, n.lower())
@@ -679,7 +680,8 @@ async def isApproxFieldWithProbWhenNeeded(nome:str, ie: InfraElement, nivel: int
     useApprox = fieldName == "logradouro" or fieldName == "bairro"
     lnome = nome.lower()
     best_pmatch = 0
-    for fn in ie.addressLevelValues:
+    for aln in ie.addressLevelNames:
+        fn = aln.name
         n = fn.split("/")[-1]
         if useApprox:
             pmatch =  await isApproxFieldProb(cache, nome, n.lower(), fieldName, threshold)
@@ -698,7 +700,8 @@ async def isApproxField(nome:str, ie: InfraElement, nivel: int, threshold:float=
     useApprox = fieldName == "logradouro" or fieldName == "bairro"
     lnome = nome.lower()
     best_pmatch = 0
-    for fn in ie.addressLevelValues:
+    for aln in ie.addressLevelNames:
+        fn = aln.name
         n = fn.split("/")[-1]
         if useApprox:
             pmatch = calc_pmatch(lnome, n.lower())

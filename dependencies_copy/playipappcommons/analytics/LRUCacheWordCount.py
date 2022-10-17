@@ -18,6 +18,8 @@ class CountWordsResult(BasicTaskControlStructure):
     num_creations: int = 0
     num_cache_hits: int = 0
 
+
+
     def clear(self):
         super().clear()
 
