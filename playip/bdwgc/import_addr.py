@@ -69,9 +69,11 @@ async def importAddressesIntern(mdb, iar:ImportAddressResult):
                     LEFT JOIN Condominio as Condominio on (Endereco.ID_CONDOMINIO=Condominio.ID_CONDOMINIO)
                     LEFT JOIN LOG_UF as UF on (Cidade.ID_UF_LOCALIDADE=UF.ID_UF)
             GROUP BY
-                    UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO, tmeio.TX_DESCRICAO_TIPO, Endereco.TX_CEP, Condominio.NM_CONDOMINIO
+                    UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO, tmeio.TX_DESCRICAO_TIPO, Endereco.TX_CEP, Condominio.NM_CONDOMINIO,
+                    UF.NM_UF, Cidade.TX_NOME_LOCALIDADE, tmeio.TX_DESCRICAO_TIPO
             ORDER BY 
-                    UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO, tmeio.TX_DESCRICAO_TIPO, Endereco.TX_CEP, Condominio.NM_CONDOMINIO
+                    UF.ID_UF, Cidade.ID_LOCALIDADE, Endereco.TX_BAIRRO, Endereco.TX_ENDERECO, Endereco.NR_NUMERO, Endereco.TX_COMPLEMENTO, tmeio.TX_DESCRICAO_TIPO, Endereco.TX_CEP, Condominio.NM_CONDOMINIO,
+                    UF.NM_UF, Cidade.TX_NOME_LOCALIDADE, tmeio.TX_DESCRICAO_TIPO
                          """)
 
         row = cursor.fetchone()
