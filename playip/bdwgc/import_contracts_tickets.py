@@ -7,9 +7,9 @@ from fastapi import APIRouter
 from playip.bdwgc.bdwgc import getWDB
 from playip.bdwgc.sql_import_analytics_tickets import sql_analytics_tickets
 from playipappcommons.analytics.contractsanalytics import ContractAnalyticData, ServicePackAnalyticData, \
-    ServicePackAndContractAnalyticData, import_contracts_raw, ImportAnalyticDataResult, \
-    getImportAnalyticDataResult, setImportAnalyticDataResult
+    ServicePackAndContractAnalyticData,  ImportAnalyticDataResult
 from playipappcommons.analytics.contractsanalyticsmodels import TicketData, iadr_key
+from playipappcommons.analytics.contractsimport import import_contracts_raw
 from playipappcommons.basictaskcontrolstructure import getControlStructure
 from playipappcommons.infra.endereco import Endereco
 
