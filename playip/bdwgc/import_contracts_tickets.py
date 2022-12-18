@@ -1,15 +1,16 @@
 import asyncio
 import datetime
-from typing import Iterable, AsyncGenerator
+from typing import Iterable, AsyncGenerator, cast
 
 from fastapi import APIRouter
 
 from playip.bdwgc.bdwgc import getWDB
 from playip.bdwgc.sql_import_analytics_tickets import sql_analytics_tickets
 from playipappcommons.analytics.analytics import ContractAnalyticData, ServicePackAnalyticData, \
-    ServicePackAndContractAnalyticData, count_events_contracts_raw, ImportAnalyticDataResult, \
+    ServicePackAndContractAnalyticData, import_contracts_raw, ImportAnalyticDataResult, \
     getImportAnalyticDataResult, setImportAnalyticDataResult
-from playipappcommons.analytics.analyticsmodels import TicketData
+from playipappcommons.analytics.analyticsmodels import TicketData, iadr_key
+from playipappcommons.basictaskcontrolstructure import getControlStructure
 from playipappcommons.infra.endereco import Endereco
 
 
@@ -110,15 +111,23 @@ async def getContratoPacoteServicoTicketIterator() -> AsyncGenerator[ServicePack
             rrow = cursor.fetchone()
 
 
-async def importAllContratoPacoteServicoTicket():
-    onGoingImportAnalyticDataResult = await getImportAnalyticDataResult(True)
-    if onGoingImportAnalyticDataResult.started:
-        return
-    onGoingImportAnalyticDataResult.started = True
-    await setImportAnalyticDataResult(onGoingImportAnalyticDataResult)
 
+async def getImportContractsResultIntern(mdb, begin:bool) -> ImportAnalyticDataResult:
+    return cast(ImportAnalyticDataResult, await getControlStructure(mdb, iadr_key, begin))
+
+async def importAllContratoPacoteServicoTicket(mdb, iadr:ImportAnalyticDataResult):
     it: Iterable[ServicePackAndContractAnalyticData] = getContratoPacoteServicoTicketIterator()
-    await count_events_contracts_raw(it, onGoingImportAnalyticDataResult)
+    await import_contracts_raw(it, iadr)
 
-    # it: AsyncGenerator[ServicePackAndContractAnalyticData, None] = getContratoPacoteServicoIterator()
-    # await count_events_contracts_raw(it)
+
+    # onGoingImportAnalyticDataResult = await getImportAnalyticDataResult(True)
+    # if onGoingImportAnalyticDataResult.started:
+    #     return
+    # onGoingImportAnalyticDataResult.started = True
+    # await setImportAnalyticDataResult(onGoingImportAnalyticDataResult)
+    #
+    # it: Iterable[ServicePackAndContractAnalyticData] = getContratoPacoteServicoTicketIterator()
+    # await import_contracts_raw(it, onGoingImportAnalyticDataResult)
+    #
+    # # it: AsyncGenerator[ServicePackAndContractAnalyticData, None] = getContratoPacoteServicoIterator()
+    # # await count_events_contracts_raw(it)

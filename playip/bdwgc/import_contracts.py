@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from playip.bdwgc.bdwgc import getWDB
 from playipappcommons.analytics.analytics import ContractAnalyticData, ServicePackAnalyticData, \
-    ServicePackAndContractAnalyticData, count_events_contracts_raw, ImportAnalyticDataResult, \
+    ServicePackAndContractAnalyticData, import_contracts_raw, ImportAnalyticDataResult, \
     getImportAnalyticDataResult, setImportAnalyticDataResult
 from playipappcommons.infra.endereco import Endereco
 
@@ -167,7 +167,7 @@ async def importAllContratoPacoteServico():
     await setImportAnalyticDataResult(onGoingImportAnalyticDataResult)
 
     it: Iterable[ServicePackAndContractAnalyticData] = getContratoPacoteServicoIterator()
-    await count_events_contracts_raw(it, onGoingImportAnalyticDataResult)
+    await import_contracts_raw(it, onGoingImportAnalyticDataResult)
 
     # it: AsyncGenerator[ServicePackAndContractAnalyticData, None] = getContratoPacoteServicoIterator()
     # await count_events_contracts_raw(it)

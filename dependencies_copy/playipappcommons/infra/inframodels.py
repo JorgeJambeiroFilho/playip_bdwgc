@@ -103,7 +103,7 @@ class InfraElement(pydantic.BaseModel):
 
     parentAddressId: Optional[FAMongoId]  # pai em termos de endereco.
     addressLevel: Optional[int] = None # determina o campo de endereço responsavel pela passagem do pai para o presente nó. Veja Endereco.getFieldNameByLevel()
-    addressLevelValues: List[str] # anteriomente os address level names eram string e se chamavam address level values. Entao, ao ler objetos antigos no banco, esse é o campo carregado. No contrutor, o campo addressLevelNames é preenchido
+    addressLevelValues: List[str] = [] # anteriomente os address level names eram string e se chamavam address level values. Entao, ao ler objetos antigos no banco, esse é o campo carregado. No contrutor, o campo addressLevelNames é preenchido
     addressLevelNames: List[InfraElementLevelName] = []
     maxAddressLevelNameTimestamp: float = 0
 

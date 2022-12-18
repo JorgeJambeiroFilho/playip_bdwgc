@@ -226,7 +226,7 @@ async def importOrFindAddress(mdb, importResult: Optional[ProcessAddressResult],
     if not infraElement:
         infraElement:InfraElement = await createInfraElement(str(parent.id), str(sparent.id), cname)
         alnt:float = time.time()
-        infraElement.addressLevelNames.append(InfraElementLevelName(name=cname, time=alnt))
+        infraElement.addressLevelNames.append(InfraElementLevelName(name=cname, timestamp=alnt))
         infraElement.maxAddressLevelNameTimestamp = alnt
         infraElement.addressLevel = nivel
         infraElement.addressFullNames.append(fullName)
@@ -248,7 +248,7 @@ async def importOrFindAddress(mdb, importResult: Optional[ProcessAddressResult],
         changed = changed
         if not found:
             alnt: float = time.time()
-            infraElement.addressLevelNames.append(InfraElementLevelName(name=cname, time=alnt))
+            infraElement.addressLevelNames.append(InfraElementLevelName(name=cname, timestamp=alnt))
             infraElement.maxAddressLevelNameTimestamp = alnt
             changed = True
 
