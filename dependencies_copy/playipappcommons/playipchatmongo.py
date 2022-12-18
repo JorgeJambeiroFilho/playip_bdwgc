@@ -124,6 +124,19 @@ def createIndex_analytics(mdb, anatabname):
     )
     print("Created Analytics indexes if necessary")
 
+def createIndexWordFreq(mdb, tabname):
+    mdb[tabname].create_index(
+        [
+            ("role", pymongo.ASCENDING),
+            ("context_type", pymongo.ASCENDING),
+            ("context_value", pymongo.ASCENDING),
+            ("target_context_type", pymongo.ASCENDING),
+            ("target_value", pymongo.ASCENDING)
+        ],
+        background=False, name="r_ct_cv_tct_tv"
+    )
+    print("Created Word Index")
+
 
 def getBotMongoDB():
     global playIPChatHelperDB
@@ -136,6 +149,7 @@ def getBotMongoDB():
         createIndex_UserClients_TimeId(playIPChatHelperDB)
         #createIndex_analytics(playIPChatHelperDB, "ISPContextMetrics")
         createIndex_NonProcessedAddresses(playIPChatHelperDB, "addresses")
+        createIndexWordFreq(playIPChatHelperDB, "StreetWordCount")
     return playIPChatHelperDB
 
 def closeBotMongoDb():

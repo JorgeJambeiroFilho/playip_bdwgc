@@ -87,7 +87,7 @@ class AddressFilter(pydantic.BaseModel):
 
 class InfraElementLevelName(pydantic.BaseModel):
     name :str
-    timestamp: float
+    timestamp: float = 0
 
 class InfraElement(pydantic.BaseModel):
     id: Optional[FAMongoId] = Field(alias='_id')

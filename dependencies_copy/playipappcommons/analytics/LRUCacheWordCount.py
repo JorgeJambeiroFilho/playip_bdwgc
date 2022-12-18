@@ -17,8 +17,8 @@ class CountWordsResult(BasicTaskControlStructure):
     num_updates: int = 0
     num_creations: int = 0
     num_cache_hits: int = 0
-
-
+    timestamp: float = 0
+    position: int = 0 # para uso na leitura do arquivo de ceps dos correios, onde não há timestamp, mas há uma ordem fixa
 
     def clear(self):
         super().clear()

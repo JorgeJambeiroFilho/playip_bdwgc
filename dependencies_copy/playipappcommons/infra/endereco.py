@@ -46,6 +46,29 @@ class Endereco(pydantic.BaseModel):
     cidade: Optional[str]
     uf: Optional[str]
     prefix: Optional[str]
+
+    def __eq__(self, other: 'Endereco'):
+        if self.logradouro != other.logradouro:
+            return False
+        if self.numero != other.numero:
+            return False
+        if self.complemento != other.complemento:
+            return False
+        if self.bairro != other.bairro:
+            return False
+        if self.cep != other.cep:
+            return False
+        if self.condominio != other.condominio:
+            return False
+        if self.cidade != other.cidade:
+            return False
+        if self.uf != other.uf:
+            return False
+        if self.prefix != other.prefix:
+            return False
+
+        return True
+
     def setFieldValueByLevel(self, level:int, value:str):
         fn: str = getFieldNameByLevel(level)
         setattr(self, fn, value)

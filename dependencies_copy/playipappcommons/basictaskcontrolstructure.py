@@ -119,11 +119,16 @@ async def saveOrEndIfAbortedCallback(session, bcs:BasicTaskControlStructure):
             bcs.abort()
             bcs.done()
 
+        await bcs.saveHardly(mdb)
+
         if bcs.isAborted() and not bcs_old.isGoingOn() and not bcs_old.isSuspended():
             return False
+        else:
+            return bcs.isComplete()
 
-    await bcs.saveHardly(mdb)
-    return bcs.isComplete()
+    else:
+        await bcs.saveHardly(mdb)
+        return bcs.isComplete()
 
 async def saveSoftly(mdb, bcs:BasicTaskControlStructure) -> bool:
     mdbcli = getMongoClient()
