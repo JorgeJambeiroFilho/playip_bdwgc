@@ -110,7 +110,7 @@ def createIndex_Addresses(mdb, anatabname):
     )
     print("Created Analytics indexes if necessary")
 
-def createIndex_analytics(mdb, anatabname):
+def createIndex_contracts_analytics(mdb, anatabname):
     mdb[anatabname].create_index(
         [
             ("infraElementId", pymongo.ASCENDING),
@@ -147,7 +147,7 @@ def getBotMongoDB():
         createIndex_Infra_Full_Address(playIPChatHelperDB)
         createIndex_ChatHistory_TimeId(playIPChatHelperDB)
         createIndex_UserClients_TimeId(playIPChatHelperDB)
-        #createIndex_analytics(playIPChatHelperDB, "ISPContextMetrics")
+        createIndex_contracts_analytics(playIPChatHelperDB, "ISPContextMetrics")
         createIndex_NonProcessedAddresses(playIPChatHelperDB, "addresses")
         createIndexWordFreq(playIPChatHelperDB, "StreetWordCount")
     return playIPChatHelperDB

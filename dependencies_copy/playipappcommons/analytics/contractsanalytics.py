@@ -16,7 +16,7 @@ from playipappcommons.infra.infraimportmethods import findAddress
 from playipappcommons.infra.inframethods import getInfraElementFullAddressName, getInfraElementFullStructuralName, \
     getInfraElementAddressHier, getInfraElementStructuralHier, expandDescendants
 from playipappcommons.infra.inframodels import InfraElement
-from playipappcommons.playipchatmongo import getBotMongoDB, createIndex_analytics
+from playipappcommons.playipchatmongo import getBotMongoDB
 from playipappcommons.util.LRUCache import LRUCache
 from playipappcommons.analytics.contractsanalyticsmodels import *
 

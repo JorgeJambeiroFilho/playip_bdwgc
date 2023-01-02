@@ -27,9 +27,20 @@ async def getCountWordsResultIntern(mdb, begin:bool) -> CountWordsResult:
 #     wcr = CountWordsResult()
 #     await setWordCountResult(wcr)
 
-# async def cleanAndCountWords():
-#     await cleanWordCount()
-#     await countWordsIntern()
+async def clear_count_words(mdb, onGoingCWR: CountWordsResult) -> CountWordsResult:
+    if onGoingCWR.isGoingOn():
+        onGoingCWR.message = "CannotClearRunningProcess"
+    else:
+        # por hora, essa operação é redundate, pois a operaçãod e contagem sempre começa do zero, mas mudarei isso depois
+        onGoingCWR = CountWordsResult()
+        await onGoingCWR.saveSoftly(mdb)
+    return onGoingCWR
+
+async def cleanAndCountWords():
+    mdb = getBotMongoDB()
+    onGoingCWR: CountWordsResult = await getCountWordsResultIntern(mdb, False)
+    await clear_count_words(mdb,onGoingCWR)
+    await countWordsIntern(mdb,onGoingCWR)
 
 
 DRY = False

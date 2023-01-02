@@ -98,37 +98,44 @@ def createTaskControlStructure(json) -> BasicTaskControlStructure:
     return taskControlFactories[json["key"]](json)
 
 
-
+# retona True se o chamador deve parar de executar a operação caso esteja em um laço
 async def saveOrEndIfAbortedCallback(session, bcs:BasicTaskControlStructure):
     mdb = session.client.PlayIPChatHelper
 
     resDict = await mdb.control.find_one({"key":bcs.key})
     if resDict:
-        bcs_old: BasicTaskControlStructure = BasicTaskControlStructure(**resDict)
-        if bcs_old.isComplete():
-            if not bcs.started: # assume que está sendo feito um clear
-                await bcs.saveHardly(mdb)
+        bcs_old: BasicTaskControlStructure = BasicTaskControlStructure(**resDict) # pega a estrutura que está na BD pois outro comando pode ter ocorrido em paralelo e ela tem a informação
+        if bcs_old.isComplete(): # o comando paralelo completou a operação
+            if not bcs.started: # assume que está sendo feito um clear, pois só ele faz sentido aqui
+                await bcs.saveHardly(mdb) # a informação do clear é salva sobre o que tinha-se antes.
+                return True # diz ao clear que a operação se completou
             else:
-                bcs.done()
-            return True
+                bcs.done() # passa informação de que a te=arefa está completa para o chamador pela estrutura bcs
+                return True  # diz ao chamador que a tarefa se completou
         else:
             if not bcs.started:
                 bcs.message = "CannotClearRunningProcess"
-                return False
+                return False # diz ao clear que não completou, ele não tem um laço para interromper, então é só um informação mesmo
         if bcs_old.isAborted():
             bcs.abort()
-            bcs.done()
+            bcs.done() # se tinha abortado em paralelo, registra a aborto e consequente termino da tarefa na estrutura bcs do chamador
 
         await bcs.saveHardly(mdb)
 
+        # nesse ponto bcs tem a informação de aborto tanto se ela veio da chamador ou paralelamente
+        # mas se veio paralelamente, bcs.isComplete() é True, pois  bcs.done() já foi chamada
         if bcs.isAborted() and not bcs_old.isGoingOn() and not bcs_old.isSuspended():
-            return False
+            return False # o chamador mandou abortar, mas não havia nada rodando em paralelo
+                         # se o comando de aborto veio paralelamente, então o chamador está executando, logo goiongOn vai dar True
+                         # e o fluxo de execuçãop não chega aqui
         else:
+            if bcs.isComplete():
+                print("SaveSoftly complete")
             return bcs.isComplete()
 
     else:
         await bcs.saveHardly(mdb)
-        return bcs.isComplete()
+        return bcs.isComplete() # se o chamador tinha completado a tarefa retorna true é natural, embora ele já saiba
 
 async def saveSoftly(mdb, bcs:BasicTaskControlStructure) -> bool:
     mdbcli = getMongoClient()

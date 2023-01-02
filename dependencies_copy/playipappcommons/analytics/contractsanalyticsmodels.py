@@ -25,11 +25,12 @@ def createImportAnalyticDataResult(json):
 registerTaskControlStructureFactory(iadr_key, createImportAnalyticDataResult)
 
 
-padr_key: str = "ProcessAnalyticDataResult"
+pcr_key: str = "ProcessContractsResult"
 
 
-class ProcessAnalyticDataResult(BasicTaskControlStructure):
-    key: str = padr_key
+class ProcessContractsResult(BasicTaskControlStructure):
+    key: str = pcr_key
+    max_inactive_time: float = 180.0 # há momentos demorados, então é preciso esperar
 
     num_sem_data_inicio: int = 0
     num_enderecos_nao_reconhecidos: int = 0
@@ -42,12 +43,27 @@ class ProcessAnalyticDataResult(BasicTaskControlStructure):
     num_cache_hits: int = 0
 
 
-def createProcessAnalyticDataResult(json):
-    return ProcessAnalyticDataResult(**json)
+
+def createProcessContractsResult(json):
+    return ProcessContractsResult(**json)
 
 
-registerTaskControlStructureFactory(padr_key, createProcessAnalyticDataResult)
+registerTaskControlStructureFactory(pcr_key, createProcessContractsResult)
 
+class TicketData(pydantic.BaseModel):
+    DT_ABERTURA: Optional[float]
+    DT_FECHAMENTO: Optional[float]
+    NM_AREA_TICKET: Optional[str]
+
+    def __eq__(self, other:TicketData):
+        if self.DT_ABERTURA != other.DT_FECHAMENTO:
+            return False
+        if self.DT_FECHAMENTO != other.DT_FECHAMENTO:
+            return False
+        if self.NM_AREA_TICKET != other.NM_AREA_TICKET:
+            return False
+
+        return True
 
 class ServicePackAnalyticData(pydantic.BaseModel):
     fullName: str #ex internet/cabo/ftth/planoxxxx  a contabilização usa os níveis
@@ -102,20 +118,6 @@ class ServicePackAnalyticData(pydantic.BaseModel):
 
 
 
-class TicketData(pydantic.BaseModel):
-    DT_ABERTURA: Optional[float]
-    DT_FECHAMENTO: Optional[float]
-    NM_AREA_TICKET: Optional[str]
-
-    def __eq__(self, other:TicketData):
-        if self.DT_ABERTURA != other.DT_FECHAMENTO:
-            return False
-        if self.DT_FECHAMENTO != other.DT_FECHAMENTO:
-            return False
-        if self.NM_AREA_TICKET != other.NM_AREA_TICKET:
-            return False
-
-        return True
 
 
 
