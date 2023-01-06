@@ -56,7 +56,7 @@ class TicketData(pydantic.BaseModel):
     NM_AREA_TICKET: Optional[str]
 
     def __eq__(self, other:TicketData):
-        if self.DT_ABERTURA != other.DT_FECHAMENTO:
+        if self.DT_ABERTURA != other.DT_ABERTURA:
             return False
         if self.DT_FECHAMENTO != other.DT_FECHAMENTO:
             return False
@@ -112,6 +112,7 @@ class ServicePackAnalyticData(pydantic.BaseModel):
             return False
         for i in range(len(self.tickets)):
             if not self.tickets[i].__eq__(other.tickets[i]):
+                a = self.tickets[i].__eq__(other.tickets[i])
                 return False
         return True
 
@@ -156,11 +157,13 @@ class ContractAnalyticData(pydantic.BaseModel):
             return False
         for i in range(len(self.enderecos)):
             if not self.enderecos[i].__eq__(other.enderecos[i]):
+                a = self.enderecos[i].__eq__(other.enderecos[i])
                 return False
         if len(self.services) != len(other.services):
             return False
         for i in range(len(self.services)):
             if not self.services[i].__eq__(other.services[i]):
+                a = self.services[i].__eq__(other.services[i])
                 return False
         return True
 

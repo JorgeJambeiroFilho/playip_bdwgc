@@ -1,8 +1,8 @@
 import traceback
 
 from playipappcommons.analytics.contractsanalyticsmodels import ImportAnalyticDataResult, ContractStorageAnalyticData, \
-    ServicePackAndContractAnalyticData, ContractAnalyticData
-from playipappcommons.playipchatmongo import getBotMongoDB, createIndex_analytics
+    ServicePackAndContractAnalyticData, ContractAnalyticData, ServicePackAnalyticData
+from playipappcommons.playipchatmongo import getBotMongoDB
 from datetime import datetime
 from typing import AsyncGenerator, Optional
 
@@ -10,6 +10,8 @@ DRY = False
 
 async def import_contract(last_contract, res: ImportAnalyticDataResult):
     mdb = getBotMongoDB()
+    if last_contract.id_contract == "10338":
+        print("contractsimport break ", last_contract.id_contract)
     contract_json = await mdb.ContractData.find_one({"id_contract":last_contract.id_contract})
     if contract_json:
         contractData: ContractStorageAnalyticData = ContractStorageAnalyticData(**contract_json)
@@ -31,9 +33,9 @@ async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalytic
     mdb = getBotMongoDB()
     dts = datetime.now().strftime("_%Y_%m_%d_%H_%M_%S")
     print("import_contracts_raw")
-    tabname = "ISPContextMetricsImp" + dts
+    #tabname = "ISPContextMetricsImp" + dts
     try:
-        createIndex_analytics(mdb, tabname)
+        #createIndex_analytics(mdb, tabname)
         #cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, tabname, res, 10000)
         # if not DRY:
         #     await mdb.ISPContextMetrics.delete_many({})
@@ -65,7 +67,16 @@ async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalytic
                last_contract.services[-1].fullName != spc.service.fullName or\
                last_contract.services[-1].DT_ATIVACAO != spc.service.DT_ATIVACAO:
 
-                    last_contract.services.append(spc.service.copy(deep=True))
+                new_service: ServicePackAnalyticData = spc.service.copy(deep=True)
+
+                if not new_service.DT_DESATIVACAO and last_contract.DT_CANCELAMENTO:
+                    new_service.DT_DESATIVACAO = last_contract.DT_CANCELAMENTO
+
+                if new_service.download_speed is None:
+                    new_service.download_speed = 0
+                    new_service.upload_speed = 0
+
+                last_contract.services.append(new_service)
 
             if spc.ticket:
                 last_contract.services[-1].tickets.append(spc.ticket)
@@ -84,8 +95,8 @@ async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalytic
     finally:
         await it.aclose()
         #await cache.close()
-        if not fail and not DRY:
-            mdb[tabname].rename("ISPContextMetrics", dropTarget=True)
+        #if not fail and not DRY:
+        #    mdb[tabname].rename("ISPContextMetrics", dropTarget=True)
         res.complete = True
         await res.saveHardly(mdb)
         #await setImportAnalyticDataResult(res)

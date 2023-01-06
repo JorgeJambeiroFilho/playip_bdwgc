@@ -41,27 +41,38 @@ async def clear_process_contracts(mdb, onGoingPcr: ProcessContractsResult):
 
 async def process_contracts(mdb, res: ProcessContractsResult):
     cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, "ISPContextMetrics", res, 10000)
-    cursor = mdb.ContractData.find({})
-    async for contractDataJson in cursor:
-        contractData: ContractStorageAnalyticData = ContractStorageAnalyticData(**contractDataJson)
-        if contractData.not_accounted:
-            if contractData.accounted:
-                if not contractData.not_accounted.__eq__(contractData.accounted):
-                    await count_events_contract(contractData.accounted, cache, True)
-                    await count_events_contract(contractData.not_accounted, cache, False)
-            else:
-                await count_events_contract(contractData.not_accounted, cache, False)
-            contractData.accounted = contractData.not_accounted
-            contractData.not_accounted = None
-            contract_json2 = contractData.dict(by_alias=True)
-            await mdb.ContractData.replace_one({"id_contract": contractData.id_contract}, contract_json2, upsert=True)
-            res.num_processed += 1
-            if await res.saveSoftly(mdb):
-                print("Process contracts aborted")
-                return
-    res.done()
-    await res.saveHardly(mdb)
-    print("Process contracts done")
+    try:
+        cursor = mdb.ContractData.find({})
+        try:
+            async for contractDataJson in cursor:
+                contractData: ContractStorageAnalyticData = ContractStorageAnalyticData(**contractDataJson)
+                if contractData.id_contract == "10338":
+                    print("process_contracts break ", contractData.id_contract)
+                if contractData.not_accounted:
+                    if contractData.accounted:
+                        if not contractData.not_accounted.__eq__(contractData.accounted):
+                            a = contractData.not_accounted.__eq__(contractData.accounted)
+                            await count_events_contract(contractData.accounted, cache, True)
+                            await count_events_contract(contractData.not_accounted, cache, False)
+                    else:
+                        await count_events_contract(contractData.not_accounted, cache, False)
+                    contractData.accounted = contractData.not_accounted
+                    contractData.not_accounted = None
+                    contract_json2 = contractData.dict(by_alias=True)
+                    await mdb.ContractData.replace_one({"id_contract": contractData.id_contract}, contract_json2, upsert=True)
+                    res.num_processed += 1
+                    if await res.saveSoftly(mdb):
+                        print("Process contracts aborted")
+                        return
+                    #if res.num_processed >= 1:
+                    #    break
+        finally:
+            cursor.close()
+    finally:
+        await cache.close()
+        res.done()
+        await res.saveHardly(mdb)
+        print("Process contracts done")
 
 
 # esse método não deve ser usado quando outros puderem ser chamados em paralelo.

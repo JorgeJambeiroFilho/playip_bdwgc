@@ -452,7 +452,7 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
         print("Exceção diferente contrato")
         cache.res.num_fails += 1
 
-    cache.res.num_processed += 1
+    #cache.res.num_processed += 1
 
    # print(cdata)
 
