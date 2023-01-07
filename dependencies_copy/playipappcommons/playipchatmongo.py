@@ -138,6 +138,18 @@ def createIndexWordFreq(mdb, tabname):
     print("Created Word Index")
 
 
+def createIndexContracts(mdb, tabname):
+    mdb[tabname].create_index(
+        [
+            ("id_contract", pymongo.ASCENDING),
+        ],
+        background=False, name="id_contract"
+    )
+    print("Created Word Index")
+
+
+
+
 def getBotMongoDB():
     global playIPChatHelperDB
     if playIPChatHelperDB is None:
@@ -150,6 +162,7 @@ def getBotMongoDB():
         createIndex_contracts_analytics(playIPChatHelperDB, "ISPContextMetrics")
         createIndex_NonProcessedAddresses(playIPChatHelperDB, "addresses")
         createIndexWordFreq(playIPChatHelperDB, "StreetWordCount")
+        createIndexContracts(playIPChatHelperDB, "ContractData")
     return playIPChatHelperDB
 
 def closeBotMongoDb():

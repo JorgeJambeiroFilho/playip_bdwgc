@@ -40,9 +40,10 @@ async def clear_process_contracts(mdb, onGoingPcr: ProcessContractsResult):
 
 
 async def process_contracts(mdb, res: ProcessContractsResult):
-    cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, "ISPContextMetrics", res, 10000)
+    cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, "ISPContextMetrics", res, 100000)
     try:
         cursor = mdb.ContractData.find({})
+        cursor.batch_size(10)
         try:
             async for contractDataJson in cursor:
                 contractData: ContractStorageAnalyticData = ContractStorageAnalyticData(**contractDataJson)
