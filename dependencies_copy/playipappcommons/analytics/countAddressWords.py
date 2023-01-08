@@ -5,10 +5,10 @@ import os
 
 import pymongo
 
-from dependencies_copy.playipappcommons.infra.inframethods import stripNonAlphaNum
 from playipappcommons.analytics.LRUCacheWordCount import CountWordsResult, LRUCacheWordCount, WordFreq
 from playipappcommons.basictaskcontrolstructure import getControlStructure
 from playipappcommons.infra.endereco import getFieldLevelByName, getFieldNameByLevel
+from playipappcommons.infra.inframethods import stripNonAlphaNum
 from playipappcommons.infra.inframodels import InfraElement, InfraElementLevelName
 from playipappcommons.playipchatmongo import getBotMongoDB
 
@@ -31,9 +31,9 @@ async def clear_count_words(mdb, onGoingCWR: CountWordsResult) -> CountWordsResu
     if onGoingCWR.isGoingOn():
         onGoingCWR.message = "CannotClearRunningProcess"
     else:
-        # por hora, essa operação é redundate, pois a operaçãod e contagem sempre começa do zero, mas mudarei isso depois
         onGoingCWR = CountWordsResult()
-        await onGoingCWR.saveSoftly(mdb)
+        if await onGoingCWR.saveSoftly(mdb):
+            mdb.StreetWordCount.drop()
     return onGoingCWR
 
 async def cleanAndCountWords():

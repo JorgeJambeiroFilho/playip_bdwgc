@@ -33,6 +33,8 @@ async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalytic
     mdb = getBotMongoDB()
     dts = datetime.now().strftime("_%Y_%m_%d_%H_%M_%S")
     print("import_contracts_raw")
+    res.clearCounts()
+    res.saveSoftly(mdb)
     #tabname = "ISPContextMetricsImp" + dts
     try:
         #createIndex_analytics(mdb, tabname)
