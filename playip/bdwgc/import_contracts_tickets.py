@@ -50,8 +50,8 @@ async def getContratoPacoteServicoTicketIterator() -> AsyncGenerator[ServicePack
                 if v is None:
                     pass
                 elif isinstance(v, datetime.datetime):
-                    dtv: datetime.datetime = cast(datetime.datetime)
-                    if dtv.tzinfo is None or dtv.tzinfo.utcoffset(dtv) is None:
+                    #dtv: datetime.datetime = cast(datetime.datetime)
+                    if v.tzinfo is None or v.tzinfo.utcoffset(v) is None:
                         # dtv.replace(tzinfo=tzsp)
                         v = datetime.datetime(year=v.year, month=v.month, day=v.day, hour=v.hour, minute=v.minute, second=v.second, microsecond=v.microsecond, tzinfo=tzsp)
                     v = v.timestamp()
