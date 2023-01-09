@@ -3,18 +3,12 @@ from __future__ import annotations
 import math
 import traceback
 from datetime import datetime
-from typing import Dict, Optional, List, Iterable, Set,  cast
+from typing import  cast
 
 import numpy
-import pydantic
-from bson import ObjectId
-from pydantic import Field
-
-from playipappcommons.famongo import FAMongoId
-from playipappcommons.infra.endereco import Endereco, buildFullImportName, address_level_fields
 from playipappcommons.infra.infraimportmethods import findAddress
-from playipappcommons.infra.inframethods import getInfraElementFullAddressName, getInfraElementFullStructuralName, \
-    getInfraElementAddressHier, getInfraElementStructuralHier, expandDescendants
+from playipappcommons.infra.inframethods import  getInfraElementFullStructuralName, \
+     getInfraElementStructuralHier, expandDescendants
 from playipappcommons.infra.inframodels import InfraElement
 from playipappcommons.playipchatmongo import getBotMongoDB
 from playipappcommons.util.LRUCache import LRUCache
@@ -76,7 +70,7 @@ def dateToPeriods(moment:float) -> Dict[str, str]:
 
 class LRUCacheAnalytics(LRUCache):
 
-    def __init__(self, mdb, table, res:ImportAnalyticDataResult, *args, **kargs):
+    def __init__(self, mdb, table, res:ProcessContractsResult, *args, **kargs):
         super().__init__(*args, **kargs)
         self.res = res
         self.mdb = mdb
@@ -311,7 +305,7 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                     sidvs: List[ISPDateEvent] = []
                     sp: ServicePackAnalyticData = cdata.services[i_sp]
                     fullPackNameList = sp.fullName.split("/")
-                    priorSP: ServicePackAnalyticData = None
+                    priorSP: Optional[ServicePackAnalyticData] = None
                     priorFullPackNameList = []
                     lenCommonProdNameWithPrior = 0
                     if i_sp > 0:
@@ -319,7 +313,7 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                         priorFullPackNameList = priorSP.fullName.split("/")
                         lenCommonProdNameWithPrior = lengthOfCommonPrefix(priorFullPackNameList, fullPackNameList)
 
-                    postSP: ServicePackAnalyticData = None
+                    postSP: Optional[ServicePackAnalyticData] = None
                     postFullPackNameList = []
                     lenCommonProdNameWithPost = 0
                     if i_sp < len(cdata.services)-1:
@@ -369,7 +363,7 @@ async def count_events_contract_endfixed(cdata: ContractAnalyticData, endIndex:i
                                         idvs.append(idv)
 
                             if not sp.DT_DESATIVACAO and cdata.DT_CANCELAMENTO:# and i_sp == len(cdata.services)-1:
-                                sp.DT_DESATIVACAO = cdata.DT_CANCELAMENTO;
+                                sp.DT_DESATIVACAO = cdata.DT_CANCELAMENTO
 
                             if sp.DT_DESATIVACAO:
                                 if i_sp == len(cdata.services)-1:
@@ -544,8 +538,8 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
 
         if\
         (
-                context.context.infraElementId is None or context.context.infraElementOptic is None or\
-                context.context.fullProductName is None or context.context.eventType is None or\
+                context.context.infraElementId is None or context.context.infraElementOptic is None or
+                context.context.fullProductName is None or context.context.eventType is None or
                 context.context.metricName is None or context.context.period_group is None
         ):
             continue

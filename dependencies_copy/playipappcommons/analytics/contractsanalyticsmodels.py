@@ -13,13 +13,13 @@ from playipappcommons.infra.endereco import Endereco
 iadr_key: str = "ImportAnalyticDataResult"
 
 
-class ImportAnalyticDataResult(BasicTaskControlStructure):
+class ImportContractsResult(BasicTaskControlStructure):
     key: str = iadr_key
     num_new: int = 0
 
 
 def createImportAnalyticDataResult(json):
-    return ImportAnalyticDataResult(**json)
+    return ImportContractsResult(**json)
 
 
 registerTaskControlStructureFactory(iadr_key, createImportAnalyticDataResult)

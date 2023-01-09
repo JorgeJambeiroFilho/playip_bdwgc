@@ -7,15 +7,18 @@ from fastapi import APIRouter
 from playip.bdwgc.bdwgc import getWDB
 from playip.bdwgc.sql_import_analytics_tickets import sql_analytics_tickets
 from playipappcommons.analytics.contractsanalytics import ContractAnalyticData, ServicePackAnalyticData, \
-    ServicePackAndContractAnalyticData,  ImportAnalyticDataResult
+    ServicePackAndContractAnalyticData,  ImportContractsResult
 from playipappcommons.analytics.contractsanalyticsmodels import TicketData, iadr_key
 from playipappcommons.analytics.contractsimport import import_contracts_raw
 from playipappcommons.basictaskcontrolstructure import getControlStructure
 from playipappcommons.infra.endereco import Endereco
+from dateutil import tz
+from dateutil.tz import tzutc
 
 
-onGoingImportAnalyticDataResult: ImportAnalyticDataResult = None
+onGoingImportAnalyticDataResult: ImportContractsResult = None
 
+tzsp = tz.tzoffset('IST', -10800)
 def cf(s):
     if s is None:
         return None
@@ -31,7 +34,7 @@ async def getContratoPacoteServicoTicketIterator() -> AsyncGenerator[ServicePack
     wdb = await getWDB()
 
     global onGoingImportAnalyticDataResult
-    res: ImportAnalyticDataResult = onGoingImportAnalyticDataResult
+    res: ImportContractsResult = onGoingImportAnalyticDataResult
 
     with wdb.cursor() as cursor:
         cursor.execute(sql_analytics_tickets)
@@ -47,9 +50,13 @@ async def getContratoPacoteServicoTicketIterator() -> AsyncGenerator[ServicePack
                 if v is None:
                     pass
                 elif isinstance(v, datetime.datetime):
+                    dtv: datetime.datetime = cast(datetime.datetime)
+                    if dtv.tzinfo is None or dtv.tzinfo.utcoffset(dtv) is None:
+                        # dtv.replace(tzinfo=tzsp)
+                        v = datetime.datetime(year=v.year, month=v.month, day=v.day, hour=v.hour, minute=v.minute, second=v.second, microsecond=v.microsecond, tzinfo=tzsp)
                     v = v.timestamp()
                 elif isinstance(v, datetime.date):
-                    v = datetime.datetime(v.year, v.month, v.day)
+                    v = datetime.datetime(v.year, v.month, v.day, tzinfo=tzsp)
                     v = v.timestamp()
                 elif isinstance(v, str):
                     v = cf(v)
@@ -112,10 +119,10 @@ async def getContratoPacoteServicoTicketIterator() -> AsyncGenerator[ServicePack
 
 
 
-async def getImportContractsResultIntern(mdb, begin:bool) -> ImportAnalyticDataResult:
-    return cast(ImportAnalyticDataResult, await getControlStructure(mdb, iadr_key, begin))
+async def getImportContractsResultIntern(mdb, begin:bool) -> ImportContractsResult:
+    return cast(ImportContractsResult, await getControlStructure(mdb, iadr_key, begin))
 
-async def importAllContratoPacoteServicoTicket(mdb, iadr:ImportAnalyticDataResult):
+async def importAllContratoPacoteServicoTicket(mdb, iadr:ImportContractsResult):
     it: Iterable[ServicePackAndContractAnalyticData] = getContratoPacoteServicoTicketIterator()
     await import_contracts_raw(it, iadr)
 

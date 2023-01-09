@@ -1,6 +1,6 @@
 import traceback
 
-from playipappcommons.analytics.contractsanalyticsmodels import ImportAnalyticDataResult, ContractStorageAnalyticData, \
+from playipappcommons.analytics.contractsanalyticsmodels import ImportContractsResult, ContractStorageAnalyticData, \
     ServicePackAndContractAnalyticData, ContractAnalyticData, ServicePackAnalyticData
 from playipappcommons.playipchatmongo import getBotMongoDB
 from datetime import datetime
@@ -8,7 +8,7 @@ from typing import AsyncGenerator, Optional
 
 DRY = False
 
-async def import_contract(last_contract, res: ImportAnalyticDataResult):
+async def import_contract(last_contract, res: ImportContractsResult):
     mdb = getBotMongoDB()
     if last_contract.id_contract == "10338":
         print("contractsimport break ", last_contract.id_contract)
@@ -28,7 +28,7 @@ async def import_contract(last_contract, res: ImportAnalyticDataResult):
 
 
 
-async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalyticData, None], res: ImportAnalyticDataResult):
+async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalyticData, None], res: ImportContractsResult):
     fail = False
     mdb = getBotMongoDB()
     dts = datetime.now().strftime("_%Y_%m_%d_%H_%M_%S")
