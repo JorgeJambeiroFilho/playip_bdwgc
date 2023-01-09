@@ -1,17 +1,13 @@
-import asyncio
 import time
 import uuid
 from typing import Optional, cast
 
-from fastapi import APIRouter, Depends
 
 from playip.bdwgc.bdwgc import getWDB
-from playipappcommons.auth.oauth2FastAPI import infrapermissiondep
 from playipappcommons.basictaskcontrolstructure import getControlStructure
 from playipappcommons.infra.endereco import Endereco
-from playipappcommons.infra.infraimportmethods import ProcessAddressResult, importOrFindAddress, ImportAddressResult, \
+from playipappcommons.infra.infraimportmethods import ProcessAddressResult,  ImportAddressResult, \
     importAddressWithoutProcessing, iar_key
-from playipappcommons.playipchatmongo import getBotMongoDB
 
 
 def cf(s):
