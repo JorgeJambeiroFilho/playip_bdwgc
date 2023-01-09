@@ -108,14 +108,23 @@ async def saveOrEndIfAbortedCallback(session, bcs:BasicTaskControlStructure):
         if bcs_old.isComplete(): # o comando paralelo completou a operação
             if not bcs.started: # assume que está sendo feito um clear, pois só ele faz sentido aqui
                 await bcs.saveHardly(mdb) # a informação do clear é salva sobre o que tinha-se antes.
+                bcs.done()
                 return True # diz ao clear que a operação se completou
             else:
                 bcs.done() # passa informação de que a te=arefa está completa para o chamador pela estrutura bcs
                 return True  # diz ao chamador que a tarefa se completou
         else:
             if not bcs.started:
-                bcs.message = "CannotClearRunningProcess"
-                return False # diz ao clear que não completou, ele não tem um laço para interromper, então é só um informação mesmo
+                if bcs_old.isGoingOn():
+                    bcs.message = "CannotClearRunningProcess"
+                    bcs.done()
+                    return False # diz ao clear que não completou com sucesso, ele não tem um laço para interromper, então é só um informação mesmo
+                else:
+                    bcs.message = "ok"
+                    bcs.done()
+                    return True # diz ao clear que não completou, ele não tem um laço para interromper, então é só um informação mesmo
+
+
         if bcs_old.isAborted():
             bcs.abort()
             bcs.done() # se tinha abortado em paralelo, registra a aborto e consequente termino da tarefa na estrutura bcs do chamador
