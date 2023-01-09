@@ -22,7 +22,7 @@ def cf(s):
 #curl -X 'GET' 'http://app.playip.com.br/playipchathelper/infra/failsclear' -H 'accept: application/json'
 
 async def getImportAddressResultIntern(mdb, begin:bool) -> ImportAddressResult:
-    return cast(await getControlStructure(mdb, iar_key, begin), ProcessAddressResult)
+    return cast(ImportAddressResult, await getControlStructure(mdb, iar_key, begin))
 
 
 
