@@ -4,6 +4,10 @@ from dynaconf import settings
 import pyodbc
 import datetime
 
+#cd ~/bdwgc
+#conda activate bdwgc
+#export ENV_FOR_DYNACONF=production
+#python -m playip.bdwgc.analytics_tickets_to_txt > ana_tick5.txt
 
 # server = '170.238.84.12'
 # database = 'WGC'

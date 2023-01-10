@@ -51,6 +51,7 @@ async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalytic
             # if element is None:
             #     res.num_enderecos_nao_reconhecidos += 1
             #     continue
+            res.num_registers += 1
 
             if not last_contract or last_contract.id_contract != spc.contract.id_contract:
                 if last_contract:

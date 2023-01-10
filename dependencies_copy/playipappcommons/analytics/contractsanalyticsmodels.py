@@ -16,6 +16,7 @@ iadr_key: str = "ImportAnalyticDataResult"
 class ImportContractsResult(BasicTaskControlStructure):
     key: str = iadr_key
     num_new: int = 0
+    num_registers = 0
 
 
 def createImportAnalyticDataResult(json):
