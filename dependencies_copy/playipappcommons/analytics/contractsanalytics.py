@@ -558,7 +558,8 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
                     "metricName": context.context.metricName,
                     "period_group": context.context.period_group
                 }
-
+            print("Analytic query")
+            print(q)
             cursor = mdb.ISPContextMetrics.find(q)
             cm: Optional[ISPContextMetrics] = None
             async for dcm in cursor:
@@ -600,7 +601,7 @@ async def getContextMetricsPrimitive(query:MetricsQuery, expandableContexts: Lis
                         ccontext.infraElementFullName = await getInfraElementFullStructuralName(FAMongoId(ccontext.infraElementId))
 
                     if ccontext in res.series:
-                        raise Exception("Contexto duplicado")
+                        raise Exception("Contexto duplicado: "+str(ccontext))
                     res.series[ccontext] = [pv[1] for pv in periods_values_ord]
 
     return res
