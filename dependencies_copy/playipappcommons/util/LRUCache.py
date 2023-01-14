@@ -23,6 +23,7 @@ class LRUCache:
         self.head.prev = self.head
         self.limit = limit
         self.num = 0
+        self.closed = False
 
     def removeNode(self, node):
         node.prev.next = node.next
@@ -38,6 +39,8 @@ class LRUCache:
         pass
 
     async def get(self, key):
+        if self.closed:
+            raise Exception("Cache usado após fechamento")
         if key in self.map:
             node = self.map[key]
             self.removeNode(node)
@@ -61,6 +64,7 @@ class LRUCache:
             return obj
 
     async def close(self):
+        self.closed = True
         while self.head.prev != self.head:
             node = self.head.prev
             self.removeNode(node)

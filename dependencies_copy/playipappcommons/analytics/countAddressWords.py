@@ -33,7 +33,7 @@ async def clear_count_words(mdb, onGoingCWR: CountWordsResult) -> CountWordsResu
     else:
         onGoingCWR = CountWordsResult()
         if await onGoingCWR.saveSoftly(mdb):
-            mdb.StreetWordCount.drop()
+            mdb.StreetWordCount.delete_many({})
     return onGoingCWR
 
 async def cleanAndCountWords():

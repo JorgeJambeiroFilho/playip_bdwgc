@@ -110,6 +110,19 @@ class LRUCacheAnalytics(LRUCache):
             return ISPContextMetrics(**icm)
 
     async def save(self, key, obj):
+        icm = await self.mdb[self.table].find_one \
+           (
+                {
+                    "infraElementId": key[0],
+                    "infraElementOptic": key[1],
+                    "fullProductName": key[2],
+                    "eventType": key[3],
+                    "metricName": key[4],
+                    "period_group": key[5]
+                }
+           )
+        if icm and icm.id != obj.id:
+            raise Exception("Chave duplicada")
         icm = cast(ISPContextMetrics, obj)
         icmDict = icm.dict(by_alias=True)
         self.res.num_updates += 1

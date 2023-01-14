@@ -29,7 +29,7 @@ async def clear_process_contracts(mdb, onGoingPcr: ProcessContractsResult):
              ]
          )
 
-         mdb.ISPContextMetrics.drop()
+         mdb.ISPContextMetrics.delete_many({})
     else:
         onGoingPcr.fail = True
         onGoingPcr.message = "Limpeza não pode ocorrer durante processamento"
