@@ -29,8 +29,8 @@ def get_oauth2_login_url_common(host: str, scheme:str, headers):
 def checkSessionCommon(cookies, secret, permission=None):
     if settings.NO_OAUTH:
         return True
-    print("secret", "<<" + secret + ">>")
-    print("cookies",cookies)
+    #print("secret", "<<" + secret + ">>")
+    #print("cookies",cookies)
     if "APIInternalSecret" in cookies and cookies["APIInternalSecret"] == secret:
         return True
     if "playipappsession" not in cookies:
