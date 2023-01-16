@@ -35,5 +35,7 @@ async def stopImportAddresses(auth=Depends(infrapermissiondep)) -> ImportAddress
 async def clearImportAddresses(auth=Depends(infrapermissiondep)) -> ImportAddressResult:
     mdb = getBotMongoDB()
     onGoingIar = ImportAddressResult()
-    await onGoingIar.saveSoftly(mdb)
+    if await onGoingIar.saveSoftly(mdb):
+        onGoingIar.done()
+        await onGoingIar.saveSoftly(mdb)
     return onGoingIar

@@ -87,7 +87,7 @@ async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalytic
         if last_contract:
             await import_contract(last_contract, res)
             print(res)
-            await res.saveHardly(mdb)
+            await res.saveSoftly(mdb)
             #await setImportAnalyticDataResult(res)
 
 
@@ -100,8 +100,8 @@ async def import_contracts_raw(it: AsyncGenerator[ServicePackAndContractAnalytic
         #await cache.close()
         #if not fail and not DRY:
         #    mdb[tabname].rename("ISPContextMetrics", dropTarget=True)
-        res.complete = True
-        await res.saveHardly(mdb)
+        res.done()
+        await res.saveSoftly(mdb)
         #await setImportAnalyticDataResult(res)
         print(res)
 

@@ -92,7 +92,7 @@ async def importAddressesIntern(mdb, iar:ImportAddressResult):
 
     time_end = time.time()
     iar.done()
-    await iar.saveHardly(mdb)
+    await iar.saveSoftly(mdb)
     print("Tempo de importação ", time_end - time_ini)
     print(iar)
 

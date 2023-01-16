@@ -28,12 +28,17 @@ async def getCountWordsResultIntern(mdb, begin:bool) -> CountWordsResult:
 #     await setWordCountResult(wcr)
 
 async def clear_count_words(mdb, onGoingCWR: CountWordsResult) -> CountWordsResult:
+    onGoingCWR.startClear()
     if onGoingCWR.isGoingOn():
         onGoingCWR.message = "CannotClearRunningProcess"
     else:
         onGoingCWR = CountWordsResult()
         if await onGoingCWR.saveSoftly(mdb):
             mdb.StreetWordCount.delete_many({})
+            onGoingCWR.done()
+            await onGoingCWR.saveSoftly(mdb)
+        else:
+            onGoingCWR.fail = True
     return onGoingCWR
 
 async def cleanAndCountWords():
@@ -158,5 +163,5 @@ async def countWordsIntern(mdb, onGoingWordCountResult: CountWordsResult):
         # if not fail and not DRY:
         #     mdb[tabname].rename("StreetWordCount", dropTarget=True)
         onGoingWordCountResult.done()
-        await onGoingWordCountResult.saveHardly(mdb)
+        await onGoingWordCountResult.saveSoftly(mdb)
         print(onGoingWordCountResult)

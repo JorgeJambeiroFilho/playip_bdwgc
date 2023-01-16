@@ -12,6 +12,7 @@ async def getProcessAnalyticDataResultIntern(mdb, begin:bool) -> ProcessContract
     return cast(ProcessContractsResult, await getControlStructure(mdb, pctr_key, begin))
 
 async def clear_process_contracts(mdb, onGoingPcr: ProcessContractsResult):
+    onGoingPcr.startClear()
     if await onGoingPcr.saveSoftly(mdb):
          await mdb.ContractData.update_many\
          (
@@ -30,17 +31,18 @@ async def clear_process_contracts(mdb, onGoingPcr: ProcessContractsResult):
          )
 
          mdb.ISPContextMetrics.delete_many({})
+         onGoingPcr.done()
+         await onGoingPcr.saveSoftly(mdb)
+
     else:
         onGoingPcr.fail = True
-        onGoingPcr.message = "Limpeza não pode ocorrer durante processamento"
-
-    onGoingPcr.done()
-    await onGoingPcr.saveHardly(mdb)
+        #onGoingPcr.message = "Limpeza não pode ocorrer durante processamento"
+        #await onGoingPcr.saveSoftly(mdb)
 
 
 
 async def process_contracts(mdb, res: ProcessContractsResult):
-    cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, "ISPContextMetrics", res, 100000)
+    cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, "ISPContextMetrics", res, 1000)
     try:
         cursor = mdb.ContractData.find({}, no_cursor_timeout=True)
         cursor.batch_size(1)
@@ -72,7 +74,7 @@ async def process_contracts(mdb, res: ProcessContractsResult):
     finally:
         await cache.close()
         res.done()
-        await res.saveHardly(mdb)
+        await res.saveSoftly(mdb)
         print("Process contracts done")
 
 

@@ -121,8 +121,9 @@ class LRUCacheAnalytics(LRUCache):
                     "period_group": key[5]
                 }
            )
-        if icm and icm.id != obj.id:
-            raise Exception("Chave duplicada")
+        if icm:
+            if icm["_id"] != obj.id:
+                raise Exception("Chave duplicada")
         icm = cast(ISPContextMetrics, obj)
         icmDict = icm.dict(by_alias=True)
         self.res.num_updates += 1

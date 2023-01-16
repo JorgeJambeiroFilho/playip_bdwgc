@@ -289,6 +289,6 @@ async def processNewAddressesIntern(mdb, par: ProcessAddressResult):
 
 
     par.done()
-    await par.saveHardly(mdb)
+    await par.saveSoftly(mdb)
 
     return par

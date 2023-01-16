@@ -39,7 +39,9 @@ async def stopImportAddresses(auth=Depends(analyticspermissiondep)) -> ImportCon
 async def clearImportAddresses(auth=Depends(analyticspermissiondep)) -> ImportContractsResult:
     mdb = getBotMongoDB()
     onGoingIar = ImportContractsResult()
-    await onGoingIar.saveSoftly(mdb)
+    if await onGoingIar.saveSoftly(mdb):
+        onGoingIar.done()
+        await onGoingIar.saveSoftly(mdb)
     return onGoingIar
 
 
