@@ -33,7 +33,7 @@ async def clear_process_contracts(mdb, onGoingPcr: ProcessContractsResult):
          mdb.ISPContextMetrics.delete_many({})
          onGoingPcr.done()
          await onGoingPcr.saveSoftly(mdb)
-
+         print("Done clear")
     else:
         onGoingPcr.fail = True
         #onGoingPcr.message = "Limpeza não pode ocorrer durante processamento"
@@ -42,7 +42,7 @@ async def clear_process_contracts(mdb, onGoingPcr: ProcessContractsResult):
 
 
 async def process_contracts(mdb, res: ProcessContractsResult):
-    cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, "ISPContextMetrics", res, 1000)
+    cache: LRUCacheAnalytics = LRUCacheAnalytics(mdb, "ISPContextMetrics", res, 100000)
     try:
         cursor = mdb.ContractData.find({}, no_cursor_timeout=True)
         cursor.batch_size(1)
@@ -70,7 +70,7 @@ async def process_contracts(mdb, res: ProcessContractsResult):
                     #if res.num_processed >= 1:
                     #    break
         finally:
-            cursor.close()
+            await cursor.close()
     finally:
         await cache.close()
         res.done()

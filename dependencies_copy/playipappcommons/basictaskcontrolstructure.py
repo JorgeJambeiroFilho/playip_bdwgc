@@ -48,7 +48,8 @@ class BasicTaskControlStructure(pydantic.BaseModel):
     def done(self):
         self.complete = True
         self.started = False
-        self.clearing = False
+        #self.clearing = False
+        self.message = "ok"
 
     def startClear(self):
         self.clearing = True
@@ -120,7 +121,11 @@ async def saveOrEndIfAbortedCallback(session, bcs:BasicTaskControlStructure):
     if resDict:
         bcs_old: BasicTaskControlStructure = BasicTaskControlStructure(**resDict) # pega a estrutura que está na BD pois outro comando pode ter ocorrido em paralelo e ela tem a informação
         if bcs.isClearRequested():
-            if not bcs_old.isGoingOn() and not bcs_old.isClearing():
+            if bcs.isComplete():
+                bcs.clearing = False
+                await bcs.saveHardly(mdb)  # o clear se completou
+                return True
+            elif not bcs_old.isGoingOn() and not bcs_old.isClearing():
                 await bcs.saveHardly(mdb)  # o clear ficou pendente, então o chamador deve fazer de novo
                 return True
             elif bcs_old.isClearing():
@@ -144,6 +149,8 @@ async def saveOrEndIfAbortedCallback(session, bcs:BasicTaskControlStructure):
                 return True  # diz ao chamador que a tarefa se completou
             elif bcs_old.isAborted():
                 bcs.abort() # passa a informação de que abortou na estrutura bcs para que, sendo ela salva depois, a informação não seja apagada
+                if bcs.isComplete():
+                    await bcs.saveHardly(mdb)
                 return True
             elif bcs.isAborted():
                 if bcs_old.isGoingOn() or bcs_old.isSuspended():

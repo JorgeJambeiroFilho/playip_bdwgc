@@ -28,17 +28,20 @@ async def getCountWordsResultIntern(mdb, begin:bool) -> CountWordsResult:
 #     await setWordCountResult(wcr)
 
 async def clear_count_words(mdb, onGoingCWR: CountWordsResult) -> CountWordsResult:
-    onGoingCWR.startClear()
-    if onGoingCWR.isGoingOn():
+
+    if onGoingCWR.isGoingOn(): # esse teste existe porque a função pode ser chamada fora do router
+                               # devo ter feito isso para algum teste
+                               # veja cleanAndCountWords()
+                               # se não fosse isso, essa função estaria direto no router como estão outras análogas
+                               # e não teria o que testar, pois criaria o onGoingCWR
         onGoingCWR.message = "CannotClearRunningProcess"
     else:
         onGoingCWR = CountWordsResult()
+        onGoingCWR.startClear()
         if await onGoingCWR.saveSoftly(mdb):
             mdb.StreetWordCount.delete_many({})
             onGoingCWR.done()
             await onGoingCWR.saveSoftly(mdb)
-        else:
-            onGoingCWR.fail = True
     return onGoingCWR
 
 async def cleanAndCountWords():

@@ -27,7 +27,7 @@ async def getImportContractsResult(auth=Depends(analyticspermissiondep)) -> Impo
 
 
 @importanalyticsrouter.get("/stopimportcontractswithtickets", response_model=ImportContractsResult)
-async def stopImportAddresses(auth=Depends(analyticspermissiondep)) -> ImportContractsResult:
+async def stopImportContracts(auth=Depends(analyticspermissiondep)) -> ImportContractsResult:
     mdb = getBotMongoDB()
     onGoingIar: ImportContractsResult = await getImportContractsResultIntern(mdb, False)
     onGoingIar.abort()
@@ -36,9 +36,10 @@ async def stopImportAddresses(auth=Depends(analyticspermissiondep)) -> ImportCon
 
 
 @importanalyticsrouter.get("/clearimportcontractswithtickets", response_model=ImportContractsResult)
-async def clearImportAddresses(auth=Depends(analyticspermissiondep)) -> ImportContractsResult:
+async def clearImportContracts(auth=Depends(analyticspermissiondep)) -> ImportContractsResult:
     mdb = getBotMongoDB()
     onGoingIar = ImportContractsResult()
+    onGoingIar.startClear()
     if await onGoingIar.saveSoftly(mdb):
         onGoingIar.done()
         await onGoingIar.saveSoftly(mdb)
