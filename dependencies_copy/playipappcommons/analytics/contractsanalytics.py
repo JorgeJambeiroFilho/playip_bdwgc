@@ -128,7 +128,7 @@ class LRUCacheAnalytics(LRUCache):
         icmDict = icm.dict(by_alias=True)
         self.res.num_updates += 1
         await self.mdb[self.table].replace_one({"_id": icm.id}, icmDict, upsert=True)
-        print(self.res)
+        #print(self.res)
 
     async def getByIV(self, iv: ISPEvent) -> ISPContextMetrics:
         key = (iv.infraElementId, iv.infraElementOptic, iv.fullProductName, iv.eventType, iv.metricName, iv.period_group)
