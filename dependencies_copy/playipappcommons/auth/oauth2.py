@@ -9,10 +9,14 @@ from datetime import datetime
 
 
 def get_oauth2_login_url_common(host: str, scheme:str, headers):
+    print("____________________get_oauth2_login_url_common__________________________")
+    print(headers)
     if "X-Forwarded-Ssl" in headers and headers["X-Forwarded-Ssl"] == 'on':
         protocol = "https"
+        print(">>>>>>>>>                 X-Forwarded-Ssl")
     else:
-        protocol = scheme
+        protocol = "https" #"#scheme
+        print(">>>>>>>>>    NO           X-Forwarded-Ssl")
 
     state = str(uuid.uuid1())
     nonce = 456
@@ -34,6 +38,7 @@ def checkSessionCommon(cookies, secret, permission=None):
     if "APIInternalSecret" in cookies and cookies["APIInternalSecret"] == secret:
         return True
     if "playipappsession" not in cookies:
+        print("checkSessionCommon", "playipappsession not in cookies")
         return False
     session_str = cookies["playipappsession"]
 
@@ -44,13 +49,16 @@ def checkSessionCommon(cookies, secret, permission=None):
         #print("required permission ", permission)
         #print("session_data", session_data)
         if "timeini" not in session_data:
+            print("checkSessionCommon", "timeini not in session_data")
             return False
         if permission is not None:
             if permission not in session_data or not session_data[permission]:
+                print("checkSessionCommon", "permission not in session_data")
                 return False
         timen = datetime.now().timestamp()
         timeini = float(session_data["timeini"])
         if timen - timeini > 12 * 60 * 60:
+            print("checkSessionCommon", "expired")
             return False
         return True
     except jwt.exceptions.InvalidTokenError as ex:

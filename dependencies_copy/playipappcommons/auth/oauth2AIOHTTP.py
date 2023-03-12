@@ -14,6 +14,7 @@ from playipappcommons.auth.oauth2 import get_oauth2_login_url_common
 
 
 async def oauth2_callback_aiohttp(secret, request: BaseRequest):
+    print("oauth2_callback_aiohttp")
     host = request.host
     if "X-Forwarded-Ssl" in request.headers and request.headers["X-Forwarded-Ssl"] == 'on':
         protocol = "https"
@@ -86,9 +87,16 @@ async def oauth2_callback_aiohttp(secret, request: BaseRequest):
     # print("##  ", encoded_jwt_str)
 
     response = aiohttp.web.HTTPFound("/playipapp/list")  # http://127.0.0.1:8008/playipapp/list
-    # response.cookies['playipappsession'] = encoded_jwt_str
-    response.set_cookie("playipappsession", encoded_jwt_str, path="/")
-    response.set_cookie('playipappbackup', do_backup, path="/")
+
+    if "APP_SERVER_DOMAIN" in settings:
+        print("oauth2_callback_aiohttp cookie domain ", settings.APP_SERVER_DOMAIN)
+        response.set_cookie("playipappsession", encoded_jwt_str, path="/", domain=settings.APP_SERVER_DOMAIN)
+        response.set_cookie('playipappbackup', do_backup, path="/", domain=settings.APP_SERVER_DOMAIN)
+    else:
+        print("oauth2_callback_aiohttp cookie domain NONE")
+        # response.cookies['playipappsession'] = encoded_jwt_str
+        response.set_cookie("playipappsession", encoded_jwt_str, path="/")
+        response.set_cookie('playipappbackup', do_backup, path="/")
 
     raise response
 
@@ -139,8 +147,17 @@ async def logout_aiohttp(secret:str, request: BaseRequest):
 def get_oauth2_login_url_aiohttp(request: BaseRequest):
       host = request.host
       headers = request.headers
-      scheme = request.url.scheme
+      print("____________________get_oauth2_login_url_aiohttp__________________________")
       print(request.headers)
+      if "X-Forwarded-Ssl" in headers and headers["X-Forwarded-Ssl"] == 'on':
+          scheme = "https"
+          print(">>>>>>>>>                 X-Forwarded-Ssl")
+      else:
+          scheme = "https"  # "#scheme
+          print(">>>>>>>>>    NO           X-Forwarded-Ssl")
+
+      #scheme = request.url.scheme
+
       url, state = get_oauth2_login_url_common(host, scheme, headers)
       res = web.HTTPFound(url)
       #res.cookies["playipapp_oauth_state"] = state
