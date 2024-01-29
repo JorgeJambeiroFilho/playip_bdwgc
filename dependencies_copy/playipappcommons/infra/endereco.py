@@ -47,6 +47,13 @@ class Endereco(pydantic.BaseModel):
     uf: Optional[str]
     prefix: Optional[str]
 
+    def all_words(self):
+        words = []
+        for fn in ["logradouro", "numero", "complemento", "bairro", "cidade", "uf", "prefix", "cep", "condominio"]:
+            if getattr(self, fn):
+                words += getattr(self, fn).split(" ")
+        return words
+
     def __eq__(self, other: 'Endereco'):
         if self.logradouro != other.logradouro:
             return False

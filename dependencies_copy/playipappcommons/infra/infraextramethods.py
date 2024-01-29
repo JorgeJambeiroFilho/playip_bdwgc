@@ -14,7 +14,7 @@ from playipappcommons.util.levenshtein import levenshteinDistanceDP
 
 
 
-async def isApproxAddr2(enderecoCand:Endereco, enderecoCadastro:Endereco):
+async def isApproxAddr2(enderecoCand:Endereco, enderecoCadastro:Endereco, threshold):
     fullName = buildFullImportName(enderecoCadastro)
     if not fullName:
         return False
@@ -23,24 +23,43 @@ async def isApproxAddr2(enderecoCand:Endereco, enderecoCadastro:Endereco):
     infraElement: InfraElement = await importOrFindAddress(mdb, importResult=None, importExecUID=None, endereco=enderecoCadastro, doImport= False)
     if not infraElement:
         return False
-    return await isApproxAddr(enderecoCand, infraElement.id, 0.9)
+    return await isApproxAddr(enderecoCand, infraElement.id, threshold, enderecoCadastro)
+
+class ContractMatchData:
+    def __init__(self, contract:ContractData, prob_match:float):
+        self.contract = contract
+        self.prob_match = prob_match
+
+    def __repr__(self):
+        return "ContractMatchData(contract="+str(self.contract)+", prob_match="+str(self.prob_match)+")"
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __lt__(self, other):
+        return self.prob_match < other.prob_match
+
+    def __gt__(self, other):
+        return self.prob_match > other.prob_match
 
 
-async def selectCompatibleContracts(enderecoCand:Endereco, contratos:List[ContractData]):
+
+async def selectCompatibleContracts(enderecoCand:Endereco, contratos:List[ContractData], threshold):
     enderecoCandSemLogradouro: Endereco = enderecoCand.copy()
     enderecoCandSemLogradouro.logradouro = None
-    selected: List[ContractData] = []
+    selected: List[ContractMatchData] = []
     for contrato in contratos:
         if not contrato.dt_cancelamento and contrato.endereco:
             contrato.endereco.prefix = "Comercial"
             print(contrato.endereco.cep)
             if enderecoCand.cep and contrato.endereco.cep.strip() == enderecoCand.cep.strip():
                 #print("CEP match")
-                if await isApproxAddr2(enderecoCandSemLogradouro, contrato.endereco):
-                    selected.append(contrato)
+                prob_match_contrato = await isApproxAddr2(enderecoCandSemLogradouro, contrato.endereco, threshold)
             else:
-                if await isApproxAddr2(enderecoCand, contrato.endereco):
-                    selected.append(contrato)
+                prob_match_contrato = await isApproxAddr2(enderecoCand, contrato.endereco, threshold)
+            if prob_match_contrato > threshold:
+                selected.append(ContractMatchData(contrato, prob_match_contrato))
+    selected.sort(reverse=True)
     return selected
 
 # contrato.endereco.cep.strip() == enderecoCand.logradouro.strip() or

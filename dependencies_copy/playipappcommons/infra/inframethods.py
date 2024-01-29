@@ -563,9 +563,12 @@ class MissCost:
        return log_prob_miss_cad
 
 
-async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float=0.9):
-    lis_cli = [stripNonAlphaNum(s) for s in cli_value.lower().split()]
-    lis_cad = [stripNonAlphaNum(s) for s in cad_value.lower().split()]
+async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float, enderecoCadastro:Endereco):
+    all_cad_words = enderecoCadastro.all_words()
+    stop_words = set("n num número no de a e o da do".split(" "))
+
+    lis_cli = [stripNonAlphaNum(s) for s in cli_value.lower().split() if s not in stop_words]
+    lis_cad = [stripNonAlphaNum(s) for s in cad_value.lower().split() if s not in stop_words]
     rest_cli = set(lis_cli)
     #rest_cad = set(lis_cad)
     log_probs_cli = {}
@@ -577,7 +580,8 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
         if w_cli in matches_cli:
             raise Exception("Palavra já casada restando")
         match_cli: Match = Match()
-        for w_cad in lis_cad:
+        for w_cad in all_cad_words:
+            w_cad = w_cad.lower()
             match_cad: Match = matches_cad.get(w_cad, None)
             pcc = log_prob_wcli_given_wcad(w_cli, w_cad)
             if pcc > match_cli.log_prob_cli_given_cad and (not match_cad or pcc > match_cad.log_prob_cli_given_cad):
@@ -619,17 +623,17 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
         log_prob_cad = math.log(await probWordIncludingWrongFields(cache, campo, w_cad))
         log_probs_cad[w_cad] = MissCost(w_cad, log_prob_cad, i)
 
-    cli_possible_miss_costs = []
-    cli_possible_miss_costs.extend(log_probs_cli.values())
-    cad_possible_miss_costs = []
-    cad_possible_miss_costs.extend(log_probs_cad.values())
+    # cli_possible_miss_costs = []
+    # cli_possible_miss_costs.extend(log_probs_cli.values())
+    # cad_possible_miss_costs = []
+    # cad_possible_miss_costs.extend(log_probs_cad.values())
 
-    cli_possible_miss_costs.sort()
-    cad_possible_miss_costs.sort()
-    for i in range(len(cli_possible_miss_costs)):
-        cli_possible_miss_costs[i].position = i
-    for i in range(len(cad_possible_miss_costs)):
-        cad_possible_miss_costs[i].position = i
+    # cli_possible_miss_costs.sort()
+    # cad_possible_miss_costs.sort()
+    # for i in range(len(cli_possible_miss_costs)):
+    #     cli_possible_miss_costs[i].position = i
+    # for i in range(len(cad_possible_miss_costs)):
+    #     cad_possible_miss_costs[i].position = i
 
 
     for w_cli, match_cli in matches_cli.items():
@@ -638,10 +642,10 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
             raise Exception("matches incompatíveis")
         w_cad = match_cli.other_word
         cli_miss = log_probs_cli[w_cli]
-        cad_miss = log_probs_cad[w_cad]
+        cad_miss = log_probs_cad[w_cad] if w_cad in log_probs_cad else None
         log_prob_miss_cli = cli_miss.log_prob_miss_cli()
-        log_prob_miss_cad = cad_miss.log_prob_miss_cad()
-        log_prob_miss = log_prob_miss_cad + log_prob_miss_cli
+        log_prob_miss_cad = cad_miss.log_prob_miss_cad() if cad_miss else 0.0
+        log_prob_miss = log_prob_miss_cli + math.log(1.0/10)
 
         if log_prob_miss > match_cli.log_prob_cli_given_cad:
             sum_match += log_prob_miss
@@ -657,8 +661,9 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
     for w_cad in lis_cad:
         if w_cad not in matches_cad:
             cad_miss = log_probs_cad[w_cad]
-            log_prob_miss_cad = cad_miss.log_prob_miss_cad()
-            sum_match += log_prob_miss_cad
+            #log_prob_miss_cad = cad_miss.log_prob_miss_cad()
+            #sum_match += log_prob_miss_cad
+            sum_match += math.log(1.0/10)
 
     log_ratio = sum_match - sum_nomatch
     ratio = math.exp(log_ratio)
@@ -667,14 +672,14 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
 
     print(prob_is_match)
 
-    return prob_is_match > threshold
+    return prob_is_match
 
 
 
 
 #isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float=0.9)
 
-async def isApproxFieldWithProbWhenNeeded(nome:str, ie: InfraElement, nivel: int, threshold:float=0.9):
+async def isApproxFieldWithProbWhenNeeded(nome:str, ie: InfraElement, nivel: int, threshold:float, enderecoCadastro:Endereco):
     cache: LRUCacheWordCount = getWordCountCache()
     fieldName = getFieldNameByLevel(nivel)
     useApprox = fieldName == "logradouro" or fieldName == "bairro"
@@ -684,7 +689,7 @@ async def isApproxFieldWithProbWhenNeeded(nome:str, ie: InfraElement, nivel: int
         fn = aln.name
         n = fn.split("/")[-1]
         if useApprox:
-            pmatch =  await isApproxFieldProb(cache, nome, n.lower(), fieldName, threshold)
+            pmatch =  await isApproxFieldProb(cache, nome, n.lower(), fieldName, threshold, enderecoCadastro)
             #pmatch = calc_pmatch(lnome, n.lower())
         else:
             pmatch = 1.0 if lnome == n.lower() else 0.0
@@ -692,7 +697,7 @@ async def isApproxFieldWithProbWhenNeeded(nome:str, ie: InfraElement, nivel: int
         if pmatch > best_pmatch:
             best_pmatch = pmatch
 
-    return best_pmatch > threshold
+    return best_pmatch
 
 
 async def isApproxField(nome:str, ie: InfraElement, nivel: int, threshold:float=0.9):
@@ -714,17 +719,17 @@ async def isApproxField(nome:str, ie: InfraElement, nivel: int, threshold:float=
     return best_pmatch > threshold
 
 
-async def isApproxAddr(endereco:Endereco, eid:FAMongoId, threshold):
-
+async def isApproxAddr(endereco:Endereco, eid:FAMongoId, threshold, enderecoCadastro:Endereco):
+   # exige compatibilidade de todos os campos que tiverem valor especificado em endereco
+    min_prob_match = 1.0
     eids = await getInfraElementAddressHier(eid)
     for i in range(1, len(eids)):
         ie: InfraElement = await getInfraElement(str(eids[i]))
         nome = endereco.getFieldValueByLevel(i)
         if nome:
-            ia = await isApproxFieldWithProbWhenNeeded(nome, ie, i, 0.9) #threshold
-            if not ia:
-                return False
-    return True
+            prob_match_field = await isApproxFieldWithProbWhenNeeded(nome, ie, i, 0.9, enderecoCadastro) #threshold
+            min_prob_match = min(min_prob_match, prob_match_field)
+    return min_prob_match
 
 
 wordCountCache: LRUCacheWordCount
