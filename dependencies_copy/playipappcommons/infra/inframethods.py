@@ -507,7 +507,7 @@ async def probWord(cache, campo:str, word:str):
 
 
 def log_prob_wcli_given_wcad(s_cli:str, s_cad:str):
-    d = levenshteinDistanceDP(s_cli, s_cad, cost_replace=math.log(10)+math.log(20), cost_del=math.log(10), cost_ins=math.log(10)+math.log(20))
+    d = levenshteinDistanceDP(s_cli, s_cad, cost_replace=math.log(10)+math.log(5), cost_del=math.log(10), cost_ins=math.log(10)+math.log(5))
     return -d
 
 
@@ -565,7 +565,7 @@ class MissCost:
 
 async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float, enderecoCadastro:Endereco):
     all_cad_words = enderecoCadastro.all_words()
-    stop_words = set("n num número no de a e o da do".split(" "))
+    stop_words = set("n num número no de a e o da do cep".split(" "))
 
     lis_cli = [stripNonAlphaNum(s) for s in cli_value.lower().split() if s not in stop_words]
     lis_cad = [stripNonAlphaNum(s) for s in cad_value.lower().split() if s not in stop_words]
