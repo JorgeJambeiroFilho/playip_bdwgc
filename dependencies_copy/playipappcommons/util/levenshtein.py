@@ -77,7 +77,7 @@ def levenshteinDistanceDP(token1, token2, cost_replace=1, cost_del=1, cost_ins=1
                     distances[t1][t2] = b
                 else:
                     distances[t1][t2] = c
-    print(distances)
+    #print(distances)
 
     #printDistances(distances, len(token1), len(token2))
     return distances[len(token1)][len(token2)]

@@ -183,6 +183,11 @@ stripPattern = re.compile('[\W_]+')
 def stripNonAlphaNum(s):
     return stripPattern.sub('', s)
 
+def split_words(text):
+    # Use regular expression to split words by blanks and separate letters from digits
+    words = re.findall(r'(?:[a-zA-ZÀ-ÖØ-öø-ÿ]+|\d+)', text)
+    return words
+
 async def isAddressInFailIntern(addressQuery: AddressQuery) -> AddressInFail:
     address = addressQuery.address
     if addressQuery.endereco:
@@ -564,11 +569,16 @@ class MissCost:
 
 
 async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float, enderecoCadastro:Endereco):
-    all_cad_words = enderecoCadastro.all_words()
+    all_cad_words = " ".join(enderecoCadastro.all_words())
+    all_cad_words = split_words(all_cad_words.lower())
     stop_words = set("n num número no de a e o da do cep".split(" "))
 
-    lis_cli = [stripNonAlphaNum(s) for s in cli_value.lower().split() if s not in stop_words]
-    lis_cad = [stripNonAlphaNum(s) for s in cad_value.lower().split() if s not in stop_words]
+    # lis_cli = [stripNonAlphaNum(s) for s in cli_value.lower().split() if s not in stop_words]
+    # lis_cad = [stripNonAlphaNum(s) for s in cad_value.lower().split() if s not in stop_words]
+
+    lis_cli = split_words(cli_value.lower())
+    lis_cad = split_words(cad_value.lower())
+
     rest_cli = set(lis_cli)
     #rest_cad = set(lis_cad)
     log_probs_cli = {}

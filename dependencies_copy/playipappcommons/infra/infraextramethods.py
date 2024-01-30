@@ -22,7 +22,7 @@ async def isApproxAddr2(enderecoCand:Endereco, enderecoCadastro:Endereco, thresh
     #infraElement: InfraElement = await getInfraElementByFullImportName(mdb, fullName)
     infraElement: InfraElement = await importOrFindAddress(mdb, importResult=None, importExecUID=None, endereco=enderecoCadastro, doImport= False)
     if not infraElement:
-        return False
+        return 0.0
     return await isApproxAddr(enderecoCand, infraElement.id, threshold, enderecoCadastro)
 
 class ContractMatchData:
