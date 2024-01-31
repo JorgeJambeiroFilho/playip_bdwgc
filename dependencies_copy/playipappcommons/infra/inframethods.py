@@ -689,6 +689,21 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
 
 #isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float=0.9)
 
+async def isApproxFieldWithProbWhenNeededNoInfra(nome:str, nivel: int, threshold:float, enderecoCadastro:Endereco):
+    cache: LRUCacheWordCount = getWordCountCache()
+    fieldName = getFieldNameByLevel(nivel)
+    useApprox = fieldName == "logradouro" or fieldName == "bairro"
+    lnome = nome.lower()
+
+    n = enderecoCadastro.getFieldValueByLevel(nivel)
+    if useApprox:
+        pmatch =  await isApproxFieldProb(cache, nome, n.lower(), fieldName, threshold, enderecoCadastro)
+    else:
+        pmatch = 1.0 if lnome == n.lower() else 0.0
+
+    return pmatch
+
+
 async def isApproxFieldWithProbWhenNeeded(nome:str, ie: InfraElement, nivel: int, threshold:float, enderecoCadastro:Endereco):
     cache: LRUCacheWordCount = getWordCountCache()
     fieldName = getFieldNameByLevel(nivel)
@@ -727,6 +742,17 @@ async def isApproxField(nome:str, ie: InfraElement, nivel: int, threshold:float=
             best_pmatch = pmatch
 
     return best_pmatch > threshold
+
+
+async def isApproxAddrNoInfra(endereco_cli:Endereco, threshold, enderecoCadastro:Endereco):
+   # exige compatibilidade de todos os campos que tiverem valor especificado em endereco
+    min_prob_match = 1.0
+    for i in range(1, len(address_level_fields)):
+        nome = endereco_cli.getFieldValueByLevel(i)
+        if nome:
+            prob_match_field = await isApproxFieldWithProbWhenNeededNoInfra(nome, i, 0.9, enderecoCadastro) #threshold
+            min_prob_match = min(min_prob_match, prob_match_field)
+    return min_prob_match
 
 
 async def isApproxAddr(endereco:Endereco, eid:FAMongoId, threshold, enderecoCadastro:Endereco):

@@ -3,7 +3,8 @@ from typing import List
 from playipappcommons.famongo import FAMongoId
 from playipappcommons.infra.endereco import getFieldNameByLevel, Endereco, buildFullImportName
 from playipappcommons.infra.infraimportmethods import getInfraElementByFullImportName, importOrFindAddress
-from playipappcommons.infra.inframethods import getInfraElementAddressHier, getInfraElement, isApproxAddr
+from playipappcommons.infra.inframethods import getInfraElementAddressHier, getInfraElement, isApproxAddr, \
+    isApproxAddrNoInfra
 from playipappcommons.infra.inframodels import InfraElement
 from playipappcommons.ispbd.ispbddata import ContractData
 from playipappcommons.playipchatmongo import getBotMongoDB
@@ -22,8 +23,9 @@ async def isApproxAddr2(enderecoCand:Endereco, enderecoCadastro:Endereco, thresh
     #infraElement: InfraElement = await getInfraElementByFullImportName(mdb, fullName)
     infraElement: InfraElement = await importOrFindAddress(mdb, importResult=None, importExecUID=None, endereco=enderecoCadastro, doImport= False)
     if not infraElement:
-        return 0.0
-    return await isApproxAddr(enderecoCand, infraElement.id, threshold, enderecoCadastro)
+        return await isApproxAddrNoInfra(enderecoCand, threshold, enderecoCadastro)
+    else:
+        return await isApproxAddr(enderecoCand, infraElement.id, threshold, enderecoCadastro)
 
 class ContractMatchData:
     def __init__(self, contract:ContractData, prob_match:float):
