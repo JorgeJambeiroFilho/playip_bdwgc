@@ -569,6 +569,7 @@ class MissCost:
 
 
 async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, threshold:float, enderecoCadastro:Endereco):
+    print("isApproxFieldProb", cli_value, cad_value, campo, threshold, enderecoCadastro)
     all_cad_words = " ".join(enderecoCadastro.all_words())
     all_cad_words = split_words(all_cad_words.lower())
     stop_words = set("n num número no de a e o da do cep".split(" "))
@@ -614,7 +615,7 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
                 match_cad.log_prob_cli_given_cad = pcc
                 matches_cli[w_cli] = match_cli
                 matches_cad[w_cad] = match_cad
-                print(match_cli, " <-> ", match_cad)
+                #print(match_cli, " <-> ", match_cad)
 
     if len(matches_cli) != len(matches_cad):
         raise Exception("Número de matches incompatível")
