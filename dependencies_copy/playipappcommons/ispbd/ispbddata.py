@@ -36,5 +36,8 @@ class Client(pydantic.BaseModel):
     alt_name: Optional[str] = None
     cpfcnpj: Optional[str] = None
 
+    def __str__(self):
+        return "Client(id_client="+str(self.id_client)+", name="+str(self.name)+", cpfcnpj="+str(self.cpfcnpj)+")"
+
 
 

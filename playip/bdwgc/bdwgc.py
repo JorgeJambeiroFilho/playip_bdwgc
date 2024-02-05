@@ -140,6 +140,7 @@ async def getContracts(id_client: str, auth=Depends(defaultpermissiondep)) -> Li
 
 
 async def getContractsInternal(id_client: str, auth=Depends(defaultpermissiondep)) -> List[ContractData]:
+    print("getContractsInternal id_client = ", id_client)
     wdb = await getWDB()
     contract_list: List[str] = []
 
@@ -168,9 +169,10 @@ async def getContractsInternal(id_client: str, auth=Depends(defaultpermissiondep
 @wgcrouter.get("/getcontractsfromcpfcnpj/{cpfcnpj}", response_model=List[ContractData])
 async def getContractsFromCPFCNPJ(cpfcnpj: str, auth=Depends(defaultpermissiondep)) -> List[ContractData]:
     client: Client = await getClientFromCPFCNPJ(cpfcnpj)
+    print("getContractsFromCPFCNPJ", cpfcnpj, "client", client)
     if client:
         contracts: List[ContractData] = await getContracts(client.id_client)
-        print("______Contratos______")
+        print("______Contratos______", cpfcnpj)
         print(contracts)
         return contracts
     else:
@@ -206,6 +208,7 @@ oldQuery = \
 
 @wgcrouter.get("/getcontract/{id_contract}", response_model=ContractData)
 async def getContract(id_contract:str, auth=Depends(defaultpermissiondep)) -> ContractData:
+    print("getContract id_contract = ", id_contract)
     global gwbd
     global bdConnectionNumber
     num = bdConnectionNumber
@@ -235,6 +238,7 @@ def getTimeStamp(v):
 
 async def getContractInternal(id_contract: str, auth=Depends(defaultpermissiondep)) -> ContractData:
     wdb = await getWDB()
+    print("getContractInternal id_contract = ", id_contract)
 
     #existe uma tabela chamada Servico que tinha tudo para ser relevante aqui, mas não foi
     with wdb.cursor() as cursor:
@@ -266,6 +270,7 @@ async def getContractInternal(id_contract: str, auth=Depends(defaultpermissionde
                          """.format(param_id_contrato=id_contract))
         row = cursor.fetchone()
         if not row or row[5]: #se tem data de desativação, não vale
+            print("getContractInternal ", id_contract, "not found" if not row else ("desativado" + str(row[5])))
             res = ContractData(id_contract=id_contract, found=False)
             return res
         else:

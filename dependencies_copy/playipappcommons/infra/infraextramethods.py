@@ -16,9 +16,11 @@ from playipappcommons.util.levenshtein import levenshteinDistanceDP
 
 
 async def isApproxAddr2(enderecoCand:Endereco, enderecoCadastro:Endereco, threshold):
+    if not enderecoCadastro:
+        return 0.0
     fullName = buildFullImportName(enderecoCadastro)
     if not fullName:
-        return False
+        return 0.0
     mdb = getBotMongoDB()
     #infraElement: InfraElement = await getInfraElementByFullImportName(mdb, fullName)
     infraElement: InfraElement = await importOrFindAddress(mdb, importResult=None, importExecUID=None, endereco=enderecoCadastro, doImport= False)
@@ -49,11 +51,14 @@ class ContractMatchData:
 
 
 async def selectCompatibleContracts(enderecoCand:Endereco, contratos:List[ContractData], threshold):
+    print("Selecting contracts", enderecoCand, contratos)
     enderecoCandSemLogradouro: Endereco = enderecoCand.copy()
     enderecoCandSemLogradouro.logradouro = None
     selected: List[ContractMatchData] = []
     for contrato in contratos:
-        if not contrato.dt_cancelamento and contrato.endereco:
+        if not contrato.found: # algum bug faz alguns contratos não serem encontrados
+            selected.append(ContractMatchData(contrato, threshold)) # deixo passar com nível mínimo de aceitação
+        elif not contrato.dt_cancelamento and contrato.endereco:
             contrato.endereco.prefix = "Comercial"
             print(contrato.endereco.cep)
             if enderecoCand.cep and contrato.endereco.cep.strip() == enderecoCand.cep.strip():
