@@ -494,6 +494,26 @@ async def probWordIncludingWrongFields(cache, campoCorreto:str, word:str):
         sum = sum + p - sum * p #probabilidade do OR
     return sum
 
+def probWordAsCharSeq(w):
+
+    freq_len = [5.0, 176.0, 1420.0, 5272, 10230, 17406, 23869, 29989, 32403, 30878, 26013, 20462, 14939, 9765, 5925, 3377, 1813, 842, 428, 198, 82, 41, 17, 5 ]
+    sum_freq_len = 0.0
+    for i in range(len(freq_len)):
+        sum_freq_len += freq_len[i]
+    props = [freq_len[i] / sum_freq_len for i in range(len(freq_len))]
+    num_freqs = len(freq_len)
+    def get_prob(l):
+        if l < num_freqs - 1:
+            return props[l]
+        else:
+            return props[num_freqs - 1] * 0.5 ** (l-(num_freqs - 1))
+
+    L = len(w)
+    p = get_prob(L) * (1/5) ** L # assumo que a sequencia de letras é lógica e que cada letra é razoavelmente previsível a partir das anteriores
+    min_p = 1 / sum_freq_len * 1.0 / 10 # a palavra pode não ser original e sim um corrupção de alguma palavra existente
+    return max(p, min_p)
+
+
 async def probWord(cache, campo:str, word:str):
 
     wfa: WordFreq = await cache.getByWord("ref", "global", "", campo, None)
@@ -502,7 +522,8 @@ async def probWord(cache, campo:str, word:str):
 
     S = 10.0
     pnew = wfau.freq / wfa.freq if wfa.freq else 1.0
-    pw_given_new = 1.0 / 10000  # uma estimativa grosseira
+    #pw_given_new = 1.0 / 10000  # uma estimativa grosseira
+    pw_given_new = probWordAsCharSeq(word)
     pw_given_not_new = (wf.freq + S / wfau.freq) / (wfa.freq + S) if wf.freq else 0.0
 
     p = pnew * pw_given_new + (1-pnew) * pw_given_not_new
@@ -540,17 +561,18 @@ class MissCost:
       return self.log_prob < ot.log_prob
 
    def log_prob_miss_cli(self):
-       if self.word in stopWords:
-           return math.log(0.5)
-       elif self.postionInString > 3:
-           log_prob_miss_cli = -math.log(10) + self.log_prob
-       elif self.postionInString > 2:
-           log_prob_miss_cli = -math.log(20) + self.log_prob
-       elif self.position == 0:
-           log_prob_miss_cli = -math.log(200) + self.log_prob # além de dar um miss a palavra teria que ter sido escrita como está pelo cliente
-       else:
-           log_prob_miss_cli = -math.log(50) + self.log_prob
-       return log_prob_miss_cli
+       return self.log_prob
+       # if self.word in stopWords:
+       #     return math.log(0.5)
+       # elif self.postionInString > 3:
+       #     log_prob_miss_cli = -math.log(10) + self.log_prob
+       # elif self.postionInString > 2:
+       #     log_prob_miss_cli = -math.log(20) + self.log_prob
+       # elif self.position == 0:
+       #     log_prob_miss_cli = -math.log(200) + self.log_prob # além de dar um miss a palavra teria que ter sido escrita como está pelo cliente
+       # else:
+       #     log_prob_miss_cli = -math.log(50) + self.log_prob
+       # return log_prob_miss_cli
 
    def log_prob_miss_cad(self):
        if self.word in stopWords:
@@ -656,7 +678,8 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
         cad_miss = log_probs_cad[w_cad] if w_cad in log_probs_cad else None
         log_prob_miss_cli = cli_miss.log_prob_miss_cli()
         log_prob_miss_cad = cad_miss.log_prob_miss_cad() if cad_miss else 0.0
-        log_prob_miss = log_prob_miss_cli + math.log(1.0/10)
+        #log_prob_miss = log_prob_miss_cli + math.log(1.0/10)
+        log_prob_miss = log_prob_miss_cli # tirei a soma com log(1.0/10), porque decidi não considerar a quantidade de palavras não escritas pelo cliente
 
         if log_prob_miss > match_cli.log_prob_cli_given_cad:
             sum_match += log_prob_miss
@@ -674,7 +697,10 @@ async def isApproxFieldProb(cache, cli_value:str, cad_value:str, campo:str, thre
             cad_miss = log_probs_cad[w_cad]
             #log_prob_miss_cad = cad_miss.log_prob_miss_cad()
             #sum_match += log_prob_miss_cad
-            sum_match += math.log(1.0/10)
+            #sum_match += math.log(1.0/10)
+            pass # não considero a quantidade de palavras não escritas pelo cliente, por isso nçao somo com log(1.0/10)
+
+    sum_match += 2 * math.log(1.0 / 10) # em vez de uma penalidade proporcional ao número de palavras, dou um ponto de partida equivalente ao que era a falta de duas palavras
 
     log_ratio = sum_match - sum_nomatch
     ratio = math.exp(log_ratio)
@@ -780,9 +806,12 @@ def getWordCountCache():
 
 
 if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
-    #loop = asyncio.get_event_loop()
-    asyncio.set_event_loop(loop)
 
-    #loop.run_until_complete(isApproxFieldProb(wordCountCache, "Preca Alfa Centouro", "Praça Alpha de Centauro (centro de apoio2)", "logradouro", 0.9))
-    loop.run_until_complete(isApproxFieldProb(getWordCountCache(), "Centauro", "Praça Alpha de Centauro (centro de apoio2)", "logradouro", 0.9))
+    print(probWordAsCharSeq("dosadgdhdhdosadgdhdhdosadgdhdhdosadgdhdh"))
+
+    # loop = asyncio.new_event_loop()
+    # #loop = asyncio.get_event_loop()
+    # asyncio.set_event_loop(loop)
+    #
+    # #loop.run_until_complete(isApproxFieldProb(wordCountCache, "Preca Alfa Centouro", "Praça Alpha de Centauro (centro de apoio2)", "logradouro", 0.9))
+    # loop.run_until_complete(isApproxFieldProb(getWordCountCache(), "Centauro", "Praça Alpha de Centauro (centro de apoio2)", "logradouro", 0.9))
