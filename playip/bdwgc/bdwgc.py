@@ -268,29 +268,34 @@ async def getContractInternal(id_contract: str, auth=Depends(defaultpermissionde
                     DT_ATIVACAO DESC 
                                   
                          """.format(param_id_contrato=id_contract))
-        row = cursor.fetchone()
-        if not row or row[5]: #se tem data de desativação, não vale
+
+        row = cursor.fetchone() # pega o mais novo
+        while row and row[5]: #se tem data de desativação, não vale
+            print("getContractInternal ", id_contract, "desativado" + str(row[5]))
+            row = cursor.fetchone()
+
+        if not row:
             print("getContractInternal ", id_contract, "not found" if not row else ("desativado" + str(row[5])))
             res = ContractData(id_contract=id_contract, found=False)
             return res
-        else:
-            name = row[0]
-            dl = row[1]
-            ul =row[2]
-            is_radio = row[9]=="radio" # a outra opção no wgc é "fibra"
-            is_ftth = "ftth" in str(row[10]).lower()
-            userName = row[12]
-            bloqId = row[13]
-            isBlocked = bloqId is not None
-            dt_ativacao: Optional[float] = getTimeStamp(row[4])
-            dt_cancelamento: Optional[float] = getTimeStamp(row[5])
 
-            home_access_type = "smartolt" if is_ftth else "aircontrol" if is_radio else "none"
+        name = row[0]
+        dl = row[1]
+        ul =row[2]
+        is_radio = row[9]=="radio" # a outra opção no wgc é "fibra"
+        is_ftth = "ftth" in str(row[10]).lower()
+        userName = row[12]
+        bloqId = row[13]
+        isBlocked = bloqId is not None
+        dt_ativacao: Optional[float] = getTimeStamp(row[4])
+        dt_cancelamento: Optional[float] = getTimeStamp(row[5])
 
-            res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name,
-                               is_radio=is_radio, is_ftth=is_ftth, found=True, user_name=userName,
-                               home_access_key=userName, home_access_type=home_access_type, bloqueado=isBlocked,
-                               dt_ativacao=dt_ativacao, dt_cancelamento=dt_cancelamento)
+        home_access_type = "smartolt" if is_ftth else "aircontrol" if is_radio else "none"
+
+        res = ContractData(id_contract=id_contract, download_speed=dl, upload_speed=ul, pack_name=name,
+                           is_radio=is_radio, is_ftth=is_ftth, found=True, user_name=userName,
+                           home_access_key=userName, home_access_type=home_access_type, bloqueado=isBlocked,
+                           dt_ativacao=dt_ativacao, dt_cancelamento=dt_cancelamento)
 
     with wdb.cursor() as cursor:
         cursor.execute("""
